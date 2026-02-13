@@ -25,28 +25,28 @@ function ReservationStatus() {
   }
 
   return (
-    <div className="reservation-status-page">
-      <h2>Reservation Details</h2>
-      <div className="reservation-info">
-        <p><strong>Reservation ID:</strong> {reservationId}</p>
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Reservation Details</h2>
+      <div className="bg-white p-5 rounded-lg shadow-sm mb-6">
+        <p className="mb-1"><span className="font-medium">Reservation ID:</span> {reservationId}</p>
         {returnData && (
           <>
-            <p><strong>Status:</strong> {returnData.status}</p>
-            <p><strong>End Time:</strong> {new Date(returnData.endTime).toLocaleString()}</p>
+            <p className="mb-1"><span className="font-medium">Status:</span> {returnData.status}</p>
+            <p className="mb-1"><span className="font-medium">End Time:</span> {new Date(returnData.endTime).toLocaleString()}</p>
           </>
         )}
       </div>
       <ErrorMessage error={error} />
       {!returned ? (
         <button
-          className="btn btn-primary"
+          className="bg-slate-800 text-white py-2 px-6 rounded-md hover:bg-slate-900 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer"
           onClick={handleReturn}
           disabled={loading}
         >
           {loading ? 'Returning...' : 'Return Vehicle'}
         </button>
       ) : (
-        <p className="success-message">Vehicle returned successfully!</p>
+        <p className="text-green-700 font-semibold mt-4">Vehicle returned successfully!</p>
       )}
     </div>
   );

@@ -40,15 +40,23 @@ function VehicleList() {
   }, [city, type]);
 
   return (
-    <div className="vehicle-list-page">
-      <h2>Available Vehicles</h2>
-      <div className="filters">
-        <select value={city} onChange={(e) => setCity(e.target.value)}>
+    <div>
+      <h2 className="text-2xl font-bold mb-4">Available Vehicles</h2>
+      <div className="flex gap-4 mb-6">
+        <select
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-md text-sm"
+        >
           {CITIES.map((c) => (
             <option key={c} value={c}>{c || 'All Cities'}</option>
           ))}
         </select>
-        <select value={type} onChange={(e) => setType(e.target.value)}>
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-md text-sm"
+        >
           {TYPES.map((t) => (
             <option key={t} value={t}>{TYPE_LABELS[t]}</option>
           ))}
@@ -56,11 +64,11 @@ function VehicleList() {
       </div>
       <ErrorMessage error={error} />
       {loading ? (
-        <p className="loading">Loading vehicles...</p>
+        <p className="text-gray-400 text-center py-8">Loading vehicles...</p>
       ) : vehicles.length === 0 ? (
-        <p className="empty">No vehicles found matching your filters.</p>
+        <p className="text-gray-400 text-center py-8">No vehicles found matching your filters.</p>
       ) : (
-        <div className="vehicle-grid">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {vehicles.map((v) => (
             <VehicleCard key={v.id} vehicle={v} />
           ))}

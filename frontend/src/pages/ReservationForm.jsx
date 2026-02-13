@@ -31,12 +31,14 @@ function ReservationForm() {
   }
 
   return (
-    <div className="reservation-form-page">
-      <h2>Reserve Vehicle</h2>
-      <p className="vehicle-id-label">Vehicle: <code>{vehicleId}</code></p>
+    <div className="max-w-md">
+      <h2 className="text-2xl font-bold mb-4">Reserve Vehicle</h2>
+      <p className="text-gray-500 mb-4">
+        Vehicle: <code className="bg-gray-100 px-2 py-0.5 rounded text-sm">{vehicleId}</code>
+      </p>
       <ErrorMessage error={error} />
-      <form onSubmit={handleSubmit} className="reservation-form">
-        <label htmlFor="userId">Your User ID</label>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <label htmlFor="userId" className="font-semibold">Your User ID</label>
         <input
           id="userId"
           type="text"
@@ -44,8 +46,13 @@ function ReservationForm() {
           onChange={(e) => setUserId(e.target.value)}
           placeholder="Enter your user ID"
           required
+          className="px-3 py-2 border border-gray-300 rounded-md text-sm"
         />
-        <button type="submit" className="btn btn-primary" disabled={loading}>
+        <button
+          type="submit"
+          disabled={loading}
+          className="bg-slate-800 text-white py-2 px-4 rounded-md hover:bg-slate-900 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer"
+        >
           {loading ? 'Reserving...' : 'Confirm Reservation'}
         </button>
       </form>

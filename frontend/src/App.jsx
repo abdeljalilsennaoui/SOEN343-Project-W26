@@ -4,6 +4,7 @@ import Home from './pages/Home';
 import VehicleList from './pages/VehicleList';
 import ReservationForm from './pages/ReservationForm';
 import ReservationStatus from './pages/ReservationStatus';
+import Analytics from './pages/Analytics';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Route path="/vehicles" element={<VehicleList />} />
           <Route path="/reserve/:vehicleId" element={<ReservationForm />} />
           <Route path="/reservations/:reservationId" element={<ReservationStatus />} />
+          <Route path="/analytics" element={<Analytics />} />
         </Routes>
       </main>
     </div>

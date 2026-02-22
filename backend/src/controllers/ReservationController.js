@@ -1,5 +1,6 @@
 const Reservation = require('../models/Reservation');
 const Analytics = require('../models/AnalyticsReport');
+const Vehicle = require('../models/Vehicle');
 
 class ReservationController {
   createReservation(req, res, next) {
@@ -7,8 +8,11 @@ class ReservationController {
       const { userId, vehicleId } = req.body;
       const reservation = Reservation.createReservation(userId, vehicleId);
 
-      Analytics.trackEvent('RESERVATION_CREATED', 'unknown', {
+      const vehicle = Vehicle.findById(vehicleId);
+
+      Analytics.trackEvent('RESERVATION_CREATED', vehicle.city, {
         reservationId: reservation.id,
+        vehicleType: vehicle.type
       });
 
       res.status(201).json({ data: reservation });

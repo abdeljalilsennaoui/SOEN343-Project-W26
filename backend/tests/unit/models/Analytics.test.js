@@ -45,4 +45,20 @@ describe('Analytics Model', () => {
       expect(events.length).toBeGreaterThan(0);
     });
   });
+
+  describe('getRentalAnalytics', () => {
+    it('should calculate rental analytics correctly', () => {
+      // Add mock reservation events
+      Analytics.trackEvent('RESERVATION_CREATED', 'Montreal', { vehicleType: 'BIKE_SHARING' });
+      Analytics.trackEvent('RESERVATION_CREATED', 'Montreal', { vehicleType: 'BIKE_SHARING' });
+      Analytics.trackEvent('RESERVATION_CREATED', 'Toronto', { vehicleType: 'CAR_SHARING' });
+
+      const stats = Analytics.getRentalAnalytics();
+      expect(stats.totalRentals).toBeGreaterThanOrEqual(3);
+      expect(stats.rentalsByCity['Montreal']).toBeGreaterThanOrEqual(2);
+      expect(stats.rentalsByCity['Toronto']).toBeGreaterThanOrEqual(1);
+      expect(stats.rentalsByType['BIKE_SHARING']).toBeGreaterThanOrEqual(2);
+      expect(stats.rentalsByType['CAR_SHARING']).toBeGreaterThanOrEqual(1);
+    });
+  });
 });

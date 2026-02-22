@@ -9,6 +9,7 @@ function Navbar() {
       <ul className="flex gap-6 list-none">
         <li><Link to="/" className="text-gray-300 hover:text-white no-underline transition-colors">Home</Link></li>
         <li><Link to="/vehicles" className="text-gray-300 hover:text-white no-underline transition-colors">Vehicles</Link></li>
+        <li><Link to="/analytics" className="text-gray-300 hover:text-white no-underline transition-colors">Analytics</Link></li>
       </ul>
     </nav>
   );

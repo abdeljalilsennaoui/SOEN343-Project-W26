@@ -39,9 +39,32 @@ function findAll() {
   return [...events];
 }
 
+function getRentalAnalytics() {
+  const rentalEvents = events.filter((e) => e.type === 'RESERVATION_CREATED');
+  
+  const totalRentals = rentalEvents.length;
+  const rentalsByCity = {};
+  const rentalsByType = {};
+  
+  for (const event of rentalEvents) {
+    const city = event.city || 'unknown';
+    const type = event.metadata?.vehicleType || 'unknown';
+    
+    rentalsByCity[city] = (rentalsByCity[city] || 0) + 1;
+    rentalsByType[type] = (rentalsByType[type] || 0) + 1;
+  }
+  
+  return {
+    totalRentals,
+    rentalsByCity,
+    rentalsByType
+  };
+}
+
 module.exports = {
   trackEvent,
   findByCity,
   findByType,
   findAll,
+  getRentalAnalytics,
 };

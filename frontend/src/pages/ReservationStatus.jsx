@@ -33,6 +33,13 @@ function ReservationStatus() {
           <>
             <p className="mb-1"><span className="font-medium">Status:</span> {returnData.status}</p>
             <p className="mb-1"><span className="font-medium">End Time:</span> {new Date(returnData.endTime).toLocaleString()}</p>
+            {returnData.payment && (
+              <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded">
+                <h3 className="font-semibold text-lg mb-2">Payment Details</h3>
+                <p className="mb-1"><span className="font-medium">Amount Charged:</span> ${returnData.payment.amount.toFixed(2)}</p>
+                <p className="mb-1"><span className="font-medium">Payment Status:</span> {returnData.payment.status}</p>
+              </div>
+            )}
           </>
         )}
       </div>

@@ -47,3 +47,7 @@ export function returnVehicle(reservationId) {
     body: JSON.stringify({ reservationId }),
   });
 }
+
+export function getRentalAnalytics() {
+  return request('/analytics/rentals');
+}

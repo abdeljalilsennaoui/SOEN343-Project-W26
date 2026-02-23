@@ -15,6 +15,11 @@ class AnalyticsController {
 
     res.json({ data: events, count: events.length });
   }
+
+  getRentalAnalytics(req, res) {
+    const analytics = Analytics.getRentalAnalytics();
+    res.json({ data: analytics });
+  }
 }
 
 module.exports = AnalyticsController;

@@ -2,50 +2,37 @@ const { v4: uuidv4 } = require('uuid');
 const { ReservationStatus } = require('./enums');
 const ApiError = require('./ApiError');
 const Vehicle = require('./Vehicle');
+const db = require('../lib/firestore');
 
-/**
- * Reservation Model — data, storage, and business logic (MVC pattern)
- *
- * @typedef {Object} Reservation
- * @property {string} id
- * @property {string} userId
- * @property {string} vehicleId
- * @property {string} status - ReservationStatus enum value
- * @property {string} startTime - ISO date string
- * @property {string} [endTime] - ISO date string
- */
+const col = db.collection('reservations');
 
-// In-memory storage
-const reservations = new Map();
-
-// Data access methods
-function create({ userId, vehicleId, status, startTime }) {
+async function create({ userId, vehicleId, status, startTime }) {
   const id = uuidv4();
   const reservation = { id, userId, vehicleId, status, startTime, endTime: null };
-  reservations.set(id, reservation);
+  await col.doc(id).set(reservation);
   return reservation;
 }
 
-function findById(id) {
-  return reservations.get(id) || null;
+async function findById(id) {
+  const snap = await col.doc(id).get();
+  return snap.exists ? snap.data() : null;
 }
 
-function findByUserId(userId) {
-  return Array.from(reservations.values()).filter((r) => r.userId === userId);
+async function findByUserId(userId) {
+  const snap = await col.where('userId', '==', userId).get();
+  return snap.docs.map((d) => d.data());
 }
 
-function update(id, updates) {
-  const reservation = reservations.get(id);
+async function update(id, updates) {
+  const reservation = await findById(id);
   if (!reservation) return null;
   const updated = { ...reservation, ...updates };
-  reservations.set(id, updated);
+  await col.doc(id).set(updated);
   return updated;
 }
 
-// Business logic
-function createReservation(userId, vehicleId) {
-  Vehicle.reserveVehicle(vehicleId);
-
+async function createReservation(userId, vehicleId) {
+  await Vehicle.reserveVehicle(vehicleId);
   return create({
     userId,
     vehicleId,
@@ -54,25 +41,23 @@ function createReservation(userId, vehicleId) {
   });
 }
 
-function getReservation(id) {
-  const reservation = findById(id);
+async function getReservation(id) {
+  const reservation = await findById(id);
   if (!reservation) throw ApiError.notFound(`Reservation ${id} not found`);
   return reservation;
 }
 
-function getUserReservations(userId) {
+async function getUserReservations(userId) {
   return findByUserId(userId);
 }
 
-function completeReservation(id) {
-  const reservation = findById(id);
+async function completeReservation(id) {
+  const reservation = await findById(id);
   if (!reservation) throw ApiError.notFound(`Reservation ${id} not found`);
   if (reservation.status === ReservationStatus.COMPLETED) {
     throw ApiError.conflict(`Reservation ${id} is already completed`);
   }
-
-  Vehicle.releaseVehicle(reservation.vehicleId);
-
+  await Vehicle.releaseVehicle(reservation.vehicleId);
   return update(id, {
     status: ReservationStatus.COMPLETED,
     endTime: new Date().toISOString(),

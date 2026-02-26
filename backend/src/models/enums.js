@@ -36,8 +36,20 @@ const ReservationStatus = Object.freeze({
 
 const UserRole = Object.freeze({
   COMMUTER: 'COMMUTER',
-  SYSTEM_ADMIN: 'SYSTEM_ADMIN',
-  CITY_ADMIN: 'CITY_ADMIN',
+  CITY_ADMINISTRATOR: 'CITY_ADMINISTRATOR',
+  SYSTEM_ADMINISTRATOR: 'SYSTEM_ADMINISTRATOR',
+});
+
+const BookingStatus = Object.freeze({
+  DRAFT: 'DRAFT',
+  ACTIVE: 'ACTIVE',
+  COMPLETE: 'COMPLETE',
+  FAILED: 'FAILED',
+});
+
+const ReceiptStatus = Object.freeze({
+  SUCCESS: 'SUCCESS',
+  FAILED: 'FAILED',
 });
 
 module.exports = {
@@ -47,4 +59,6 @@ module.exports = {
   ParkingStatus,
   ReservationStatus,
   UserRole,
+  BookingStatus,
+  ReceiptStatus,
 };

@@ -1,10 +1,14 @@
 const Vehicle = require('../models/Vehicle');
 
 class VehicleController {
-  getVehicles(req, res) {
-    const { city, type } = req.query;
-    const vehicles = Vehicle.getAvailableVehicles(city, type);
-    res.json({ data: vehicles });
+  async getVehicles(req, res, next) {
+    try {
+      const { city, type } = req.query;
+      const vehicles = await Vehicle.getAvailableVehicles(city, type);
+      res.json({ data: vehicles });
+    } catch (err) {
+      next(err);
+    }
   }
 }
 

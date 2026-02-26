@@ -5,7 +5,7 @@ class MockPaymentGateway extends IPaymentGateway {
   async charge(amount, metadata = {}) {
     const transactionId = uuidv4();
 
-    if (metadata.simulateFailure) {
+    if (metadata.simulateFailure || metadata.token === 'fail') {
       return {
         transactionId,
         success: false,

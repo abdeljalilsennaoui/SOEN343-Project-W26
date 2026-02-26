@@ -21,6 +21,18 @@ class ApiError extends Error {
   static internal(message) {
     return new ApiError('INTERNAL_ERROR', message, 500);
   }
+
+  static forbidden(message) {
+    return new ApiError('FORBIDDEN', message, 403);
+  }
+
+  static paymentFailed(message) {
+    return new ApiError('PAYMENT_FAILED', message, 402);
+  }
+
+  static unauthorized(message) {
+    return new ApiError('UNAUTHORIZED', message, 401);
+  }
 }
 
 module.exports = ApiError;

@@ -214,4 +214,14 @@ describe('API Integration Tests', () => {
       expect(Array.isArray(res.body.data)).toBe(true);
     });
   });
+
+  describe('GET /api/analytics/rentals', () => {
+    it('should return rental analytics', async () => {
+      const res = await request(app).get('/api/analytics/rentals');
+      expect(res.status).toBe(200);
+      expect(res.body.data.totalRentals).toBeDefined();
+      expect(res.body.data.rentalsByCity).toBeDefined();
+      expect(res.body.data.rentalsByType).toBeDefined();
+    });
+  });
 });

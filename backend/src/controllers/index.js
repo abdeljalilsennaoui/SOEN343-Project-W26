@@ -5,6 +5,8 @@ const PaymentController = require('./PaymentController');
 const ReturnController = require('./ReturnController');
 const ParkingController = require('./ParkingController');
 const AnalyticsController = require('./AnalyticsController');
+const mobilitySearchController = require('./MobilitySearchController');
+const bookingController = require('./BookingController');
 
 const healthController = new HealthController();
 const vehicleController = new VehicleController();
@@ -22,4 +24,6 @@ module.exports = {
   returnController,
   parkingController,
   analyticsController,
+  mobilitySearchController,
+  bookingController,
 };

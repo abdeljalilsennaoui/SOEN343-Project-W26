@@ -1,21 +1,9 @@
 const { v4: uuidv4 } = require('uuid');
+const db = require('../lib/firestore');
 
-/**
- * Analytics Model — data, storage, and business logic (MVC pattern)
- *
- * @typedef {Object} AnalyticsEvent
- * @property {string} id
- * @property {string} type
- * @property {string} city
- * @property {string} createdAt - ISO date string
- * @property {Object} [metadata]
- */
+const col = db.collection('analytics');
 
-// In-memory storage
-const events = [];
-
-// Data access & business logic
-function trackEvent(type, city, metadata = null) {
+async function trackEvent(type, city, metadata = null) {
   const event = {
     id: uuidv4(),
     type,
@@ -23,20 +11,41 @@ function trackEvent(type, city, metadata = null) {
     createdAt: new Date().toISOString(),
     metadata,
   };
-  events.push(event);
+  await col.doc(event.id).set(event);
   return event;
 }
 
-function findByCity(city) {
-  return events.filter((e) => e.city.toLowerCase() === city.toLowerCase());
+async function findByCity(city) {
+  const snap = await col.where('city', '==', city).get();
+  return snap.docs.map((d) => d.data());
 }
 
-function findByType(type) {
-  return events.filter((e) => e.type === type);
+async function findByType(type) {
+  const snap = await col.where('type', '==', type).get();
+  return snap.docs.map((d) => d.data());
 }
 
-function findAll() {
-  return [...events];
+async function findAll() {
+  const snap = await col.get();
+  return snap.docs.map((d) => d.data());
+}
+
+async function getRentalAnalytics() {
+  const snap = await col.where('type', '==', 'RESERVATION_CREATED').get();
+  const rentalEvents = snap.docs.map((d) => d.data());
+
+  const totalRentals = rentalEvents.length;
+  const rentalsByCity = {};
+  const rentalsByType = {};
+
+  for (const event of rentalEvents) {
+    const city = event.city || 'unknown';
+    const type = event.metadata?.vehicleType || 'unknown';
+    rentalsByCity[city] = (rentalsByCity[city] || 0) + 1;
+    rentalsByType[type] = (rentalsByType[type] || 0) + 1;
+  }
+
+  return { totalRentals, rentalsByCity, rentalsByType };
 }
 
 module.exports = {
@@ -44,4 +53,5 @@ module.exports = {
   findByCity,
   findByType,
   findAll,
+  getRentalAnalytics,
 };

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { createReservation, chargePayment } from '../services/api';
+import { createReservation } from '../services/api';
 import ErrorMessage from '../components/ErrorMessage';
 
 function ReservationForm() {
@@ -19,8 +19,6 @@ function ReservationForm() {
     try {
       const resData = await createReservation(userId.trim(), vehicleId);
       const reservation = resData.data;
-
-      await chargePayment(reservation.id, 5.0);
 
       navigate(`/reservations/${reservation.id}`);
     } catch (err) {

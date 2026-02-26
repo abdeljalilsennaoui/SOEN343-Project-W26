@@ -6,6 +6,8 @@ const paymentRoutes = require('./payment.routes');
 const returnRoutes = require('./return.routes');
 const parkingRoutes = require('./parking.routes');
 const analyticsRoutes = require('./analytics.routes');
+const mobilityRoutes = require('./mobility.routes');
+const bookingRoutes = require('./booking.routes');
 
 const router = Router();
 
@@ -16,5 +18,7 @@ router.use(paymentRoutes);
 router.use(returnRoutes);
 router.use(parkingRoutes);
 router.use(analyticsRoutes);
+router.use(mobilityRoutes);
+router.use(bookingRoutes);
 
 module.exports = router;

@@ -1,10 +1,17 @@
+import { auth } from '../lib/firebase';
+
 const BASE_URL = '/api';
 
 async function request(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}`;
 
+  const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+
   const config = {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
     ...options,
   };
 
@@ -45,5 +52,28 @@ export function returnVehicle(reservationId) {
   return request('/returns', {
     method: 'POST',
     body: JSON.stringify({ reservationId }),
+  });
+}
+
+export function getRentalAnalytics() {
+  return request('/analytics/rentals');
+}
+
+export function searchMobilityOptions(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  return request(`/mobility/options/search?${query}`);
+}
+
+export function createBookingDraft(optionId, startTime, endTime, pickupLocation) {
+  return request('/bookings/draft', {
+    method: 'POST',
+    body: JSON.stringify({ optionId, startTime, endTime, pickupLocation }),
+  });
+}
+
+export function confirmBooking(draftId, token) {
+  return request(`/bookings/${draftId}/confirm`, {
+    method: 'POST',
+    body: JSON.stringify({ paymentDetails: { token } }),
   });
 }

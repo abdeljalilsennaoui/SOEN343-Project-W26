@@ -1,9 +1,27 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
+function getErrorMessage(code) {
+  switch (code) {
+    case 'auth/email-already-in-use':
+      return 'An account with this email already exists.';
+    case 'auth/invalid-email':
+      return 'Invalid email address.';
+    case 'auth/weak-password':
+      return 'Password must be at least 6 characters.';
+    default:
+      return 'Something went wrong. Please try again.';
+  }
+}
+
+
 function Register() {
+  const { register, signInWithGoogle } = useAuth();
+  const navigate = useNavigate();
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -12,16 +30,20 @@ function Register() {
     password: '',
     confirmPassword: '',
   });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   function handleChange(e) {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+    setError('');
     if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match', {
-        description: 'Please check your passwords',
+      setError('Passwords do not match.');
+      toast.error('Passwords do not match.', {
+        description: 'Please make sure your passwords match.',
         action: {
           label: 'Close',
           onClick: () => toast.dismiss(),
@@ -29,14 +51,43 @@ function Register() {
       });
       return;
     }
-  
-    toast.success('Account created successfully', {
-      description: 'You are now registered',
-      action: {
-        label: 'Close',
-        onClick: () => toast.dismiss(),
-      },
-    });
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      toast.error('Password must be at least 6 characters.', {
+        description: 'Please make sure your password is at least 6 characters.',
+        action: {
+          label: 'Close',
+          onClick: () => toast.dismiss(),
+        },
+      });
+      return;
+    }
+    setLoading(true);
+    try {
+      await register(formData.email, formData.password);
+      navigate('/');
+    } catch (err) {
+      setError(getErrorMessage(err.code));
+      toast.error(getErrorMessage(err.code), {
+        description: err.message,
+        action: {
+          label: 'Close',
+          onClick: () => toast.dismiss(),
+        },
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogle() {
+    setError('');
+    try {
+      await signInWithGoogle();
+      navigate('/');
+    } catch (err) {
+      setError(getErrorMessage(err.code));
+    }
   }
 
   return (
@@ -100,8 +151,7 @@ function Register() {
               onChange={handleChange}
               placeholder="Minimum 8 characters"
               required
-              minLength={8}
-              className="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-black-500/50 focus:border-black-500"
+              className={`w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-black-500/50 focus:border-black-500 ${error ? 'border-red-500' : ''}`}
             />
             <button
               type="button"
@@ -127,8 +177,7 @@ function Register() {
               onChange={handleChange}
               placeholder="Repeat your password"
               required
-              minLength={8}
-              className="w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-black-500/50 focus:border-black-500"
+              className={`w-full px-4 py-2.5 pr-10 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-black-500/50 focus:border-black-500 ${error ? 'border-red-500' : ''}`}
             />
             <button
               type="button"
@@ -143,9 +192,10 @@ function Register() {
 
         <button
           type="submit"
-          className="w-full py-3 px-4 bg-black text-white font-semibold rounded-md hover:from-black-500 hover:to-black-700 transition-all shadow-sm"
+          disabled={loading}
+          className="w-full py-3 px-4 bg-black text-white font-semibold rounded-md hover:from-black-500 hover:to-black-700 transition-all shadow-sm disabled:opacity-50"
         >
-          Create account
+          {loading ? 'Creating account…' : 'Create account'}
         </button>
       </form>
 
@@ -162,6 +212,7 @@ function Register() {
         <div className="space-y-3">
           <button
             type="button"
+            onClick={handleGoogle}
             className="w-full flex items-center justify-center gap-3 py-2.5 px-4 border border-gray-300 rounded-md bg-white text-gray-700 font-medium hover:bg-gray-50 transition-colors"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -172,22 +223,9 @@ function Register() {
             </svg>
             Continue with Google
           </button>
-          <button
-            type="button"
-            className="w-full flex items-center justify-center gap-3 py-2.5 px-4 border border-gray-300 rounded-md bg-white text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path fill="#F25022" d="M1 1h10v10H1z" />
-              <path fill="#00A4EF" d="M1 13h10v10H1z" />
-              <path fill="#7FBA00" d="M13 1h10v10H13z" />
-              <path fill="#FFB900" d="M13 13h10v10H13z" />
-            </svg>
-            Continue with Microsoft
-          </button>
         </div>
       </div>
     </>
   );
 }
-
 export default Register;

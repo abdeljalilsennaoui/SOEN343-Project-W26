@@ -1,12 +1,13 @@
+import { AuthProvider } from '@/contexts/AuthContext';
 import Router from '@/Router';
 import { Toaster } from 'sonner';
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <AuthProvider>
       <Router />
       <Toaster />
-    </div>
+    </AuthProvider>
   );
 }
 

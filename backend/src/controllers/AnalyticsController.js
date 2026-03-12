@@ -26,6 +26,15 @@ class AnalyticsController {
       next(err);
     }
   }
+
+  async getGatewayAnalytics(_req, res, next) {
+    try {
+      const analytics = await Analytics.getGatewayAnalytics();
+      res.json({ data: analytics });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = AnalyticsController;

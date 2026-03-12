@@ -10,37 +10,46 @@ import MapPage from '@/pages/Map';
 import Analytics from '@/pages/Analytics';
 import Login from '@/pages/Auth/Login';
 import Register from '@/pages/Auth/Register';
-
+import BookingFlow from '@/pages/BookingFlow';
+import ProviderDashboard from '@/pages/ProviderDashboard';
+import ParkingPage from '@/pages/ParkingPage';
+import TransitPage from '@/pages/TransitPage';
+import MyBookings from '@/pages/MyBookings';
 
 function PageLayout({ children }) {
-   return <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>;
+  return <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>;
 }
 
 export default function Router() {
-    return (
-        <Routes>
-                <Route element={<AuthLayout />}>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
-                </Route>
-                <Route
-                    path="/*"
-                    element={
-                        <ProtectedRoute>
-                        <div className="min-h-screen bg-gray-50">
-                            <Navbar />
-                            <Routes>
-                            <Route path="/map" element={<MapPage />} />
-                            <Route path="/" element={<PageLayout><Home /></PageLayout>} />
-                            <Route path="/vehicles" element={<PageLayout><VehicleList /></PageLayout>} />
-                            <Route path="/reserve/:vehicleId" element={<PageLayout><ReservationForm /></PageLayout>} />
-                            <Route path="/reservations/:reservationId" element={<PageLayout><ReservationStatus /></PageLayout>} />
-                            <Route path="/analytics" element={<PageLayout><Analytics /></PageLayout>} />
-                            </Routes>
-                        </div>
-                        </ProtectedRoute>
-                    }
-                />
-        </Routes>
-    )
+  return (
+    <Routes>
+      <Route element={<AuthLayout />}>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+      </Route>
+      <Route
+        path="/*"
+        element={
+          <ProtectedRoute>
+            <div className="min-h-screen bg-gray-50">
+              <Navbar />
+              <Routes>
+                <Route path="/map" element={<MapPage />} />
+                <Route path="/book" element={<BookingFlow />} />
+                <Route path="/" element={<PageLayout><Home /></PageLayout>} />
+                <Route path="/vehicles" element={<PageLayout><VehicleList /></PageLayout>} />
+                <Route path="/reserve/:vehicleId" element={<PageLayout><ReservationForm /></PageLayout>} />
+                <Route path="/reservations/:reservationId" element={<PageLayout><ReservationStatus /></PageLayout>} />
+                <Route path="/analytics" element={<PageLayout><Analytics /></PageLayout>} />
+                <Route path="/parking" element={<PageLayout><ParkingPage /></PageLayout>} />
+                <Route path="/transit" element={<PageLayout><TransitPage /></PageLayout>} />
+                <Route path="/provider" element={<PageLayout><ProviderDashboard /></PageLayout>} />
+                <Route path="/bookings" element={<PageLayout><MyBookings /></PageLayout>} />
+              </Routes>
+            </div>
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
+  );
 }

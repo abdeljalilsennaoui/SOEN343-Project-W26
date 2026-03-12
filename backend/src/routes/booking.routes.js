@@ -30,4 +30,10 @@ router.post(
   bookingController.completeBooking.bind(bookingController),
 );
 
+router.get(
+  '/bookings',
+  requireAuth,
+  bookingController.getMyBookings.bind(bookingController),
+);
+
 module.exports = router;

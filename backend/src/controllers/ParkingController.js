@@ -1,5 +1,5 @@
 const Parking = require('../models/Parking');
-const Analytics = require('../models/AnalyticsReport');
+const EventBus = require('../lib/EventBus');
 
 class ParkingController {
   async getFacilities(req, res, next) {
@@ -40,7 +40,8 @@ class ParkingController {
     try {
       const { spotId } = req.body;
       const spot = await Parking.reserveSpot(spotId);
-      Analytics.trackEvent('PARKING_RESERVED', spot.facilityId, { spotId }).catch(() => {});
+      // Observer pattern: emit event — AnalyticsListener handles persistence
+      EventBus.emit('PARKING_RESERVED', { city: spot.facilityId, metadata: { spotId } });
       res.status(201).json({ data: spot });
     } catch (err) {
       next(err);
@@ -51,7 +52,7 @@ class ParkingController {
     try {
       const { spotId } = req.body;
       const spot = await Parking.releaseSpot(spotId);
-      Analytics.trackEvent('PARKING_RELEASED', spot.facilityId, { spotId }).catch(() => {});
+      EventBus.emit('PARKING_RELEASED', { city: spot.facilityId, metadata: { spotId } });
       res.json({ data: spot });
     } catch (err) {
       next(err);

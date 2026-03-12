@@ -4,12 +4,16 @@ const { validateQuery, analyticsQuerySchema } = require('../middleware/validatio
 
 const router = Router();
 
-router.get('/analytics/rentals', (req, res) =>
-  analyticsController.getRentalAnalytics(req, res)
+router.get('/analytics/rentals', (req, res, next) =>
+  analyticsController.getRentalAnalytics(req, res, next)
 );
 
-router.get('/analytics', validateQuery(analyticsQuerySchema), (req, res) =>
-  analyticsController.getEvents(req, res)
+router.get('/analytics/gateway', (req, res, next) =>
+  analyticsController.getGatewayAnalytics(req, res, next)
+);
+
+router.get('/analytics', validateQuery(analyticsQuerySchema), (req, res, next) =>
+  analyticsController.getEvents(req, res, next)
 );
 
 module.exports = router;

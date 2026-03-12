@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { registerUser } from '@/services/api';
 
 function getErrorMessage(code) {
   switch (code) {
@@ -29,6 +30,7 @@ function Register() {
     email: '',
     password: '',
     confirmPassword: '',
+    role: 'COMMUTER',  // default; options: COMMUTER | MOBILITY_PROVIDER
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -65,6 +67,9 @@ function Register() {
     setLoading(true);
     try {
       await register(formData.email, formData.password);
+      // Create the Firestore user doc with the chosen role before any
+      // other API call can trigger auto-provisioning as COMMUTER.
+      await registerUser(formData.role);
       navigate('/');
     } catch (err) {
       setError(getErrorMessage(err.code));
@@ -188,6 +193,22 @@ function Register() {
               {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1.5">
+            I am a…
+          </label>
+          <select
+            id="role"
+            name="role"
+            value={formData.role}
+            onChange={handleChange}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-black-500/50 focus:border-black-500"
+          >
+            <option value="COMMUTER">Commuter — I want to book rides</option>
+            <option value="MOBILITY_PROVIDER">Mobility Provider — I manage vehicles</option>
+          </select>
         </div>
 
         <button

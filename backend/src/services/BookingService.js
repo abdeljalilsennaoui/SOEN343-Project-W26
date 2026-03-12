@@ -6,7 +6,11 @@ const PricingService = require('./PricingService');
 const { createPaymentGateway } = require('../gateways');
 const ApiError = require('../models/ApiError');
 const { BookingStatus, ReceiptStatus } = require('../models/enums');
+const BookingStateMachine = require('../lib/BookingStateMachine');
+const EventBus = require('../lib/EventBus');
 
+// Strategy pattern: paymentGateway is resolved once via the factory.
+// Swapping the implementation (mock → real) requires only changing gateways/index.js.
 const paymentGateway = createPaymentGateway();
 
 /**
@@ -27,11 +31,19 @@ async function createDraft({ userId, optionId, startTime, endTime, pickupLocatio
   }
 
   const totalPrice = PricingService.calculatePrice(option, startTime, endTime);
-  return Booking.create({ userId, optionId, startTime, endTime, pickupLocation, totalPrice });
+  const draft = await Booking.create({ userId, optionId, startTime, endTime, pickupLocation, totalPrice });
+
+  EventBus.emit('RESERVATION_CREATED', {
+    city: option.city,
+    metadata: { vehicleType: option.type, optionId, userId },
+  });
+
+  return draft;
 }
 
 /**
  * Step B — Confirm a DRAFT booking and process payment.
+ * Uses BookingStateMachine to validate the DRAFT → ACTIVE transition.
  */
 async function confirmDraft(draftId, userId, paymentDetails) {
   const booking = await Booking.findById(draftId);
@@ -43,13 +55,8 @@ async function confirmDraft(draftId, userId, paymentDetails) {
     throw new ApiError('FORBIDDEN', 'You are not authorized to confirm this booking.', 403);
   }
 
-  if (booking.status !== BookingStatus.DRAFT) {
-    throw new ApiError(
-      'DRAFT_INVALID_STATE',
-      `Booking is not in DRAFT state (current: ${booking.status}).`,
-      409,
-    );
-  }
+  // State pattern: asserts DRAFT → ACTIVE is a valid transition; throws 409 otherwise
+  BookingStateMachine.transition(booking, BookingStatus.ACTIVE);
 
   const option = await MobilityOption.findById(booking.optionId);
   if (!option || !(await AvailabilityService.isAvailable(option, booking.startTime, booking.endTime, draftId))) {
@@ -81,12 +88,21 @@ async function confirmDraft(draftId, userId, paymentDetails) {
     status: ReceiptStatus.SUCCESS,
   });
 
+  EventBus.emit('BOOKING_CONFIRMED', {
+    city: option.city,
+    metadata: { bookingId: draftId, type: option.type, amount: booking.totalPrice },
+  });
+  EventBus.emit('PAYMENT_PROCESSED', {
+    city: option.city,
+    metadata: { bookingId: draftId, amount: booking.totalPrice, transactionId: gatewayResult.transactionId },
+  });
+
   return { booking: updatedBooking, receipt };
 }
 
 /**
  * Step C — Mark a booking COMPLETE (idempotent).
- * Ownership check: only the booking owner can complete it.
+ * Uses BookingStateMachine to validate the ACTIVE → COMPLETE transition.
  */
 async function completeBooking(bookingId, userId) {
   const booking = await Booking.findById(bookingId);
@@ -98,19 +114,23 @@ async function completeBooking(bookingId, userId) {
     throw new ApiError('FORBIDDEN', 'You are not authorized to complete this booking.', 403);
   }
 
+  // Idempotent: already complete is fine
   if (booking.status === BookingStatus.COMPLETE) {
     return booking;
   }
 
-  if (booking.status !== BookingStatus.ACTIVE) {
-    throw new ApiError(
-      'DRAFT_INVALID_STATE',
-      `Cannot complete booking with status ${booking.status}. Booking must be ACTIVE.`,
-      409,
-    );
-  }
+  // State pattern: asserts ACTIVE → COMPLETE is valid; throws 409 otherwise
+  BookingStateMachine.transition(booking, BookingStatus.COMPLETE);
 
   return Booking.update(bookingId, { status: BookingStatus.COMPLETE });
 }
 
-module.exports = { createDraft, confirmDraft, completeBooking };
+/**
+ * Returns all bookings belonging to a user.
+ * Information Expert: BookingService owns booking retrieval logic.
+ */
+async function getMyBookings(userId) {
+  return Booking.findByUserId(userId);
+}
+
+module.exports = { createDraft, confirmDraft, completeBooking, getMyBookings };

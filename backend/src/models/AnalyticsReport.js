@@ -48,10 +48,32 @@ async function getRentalAnalytics() {
   return { totalRentals, rentalsByCity, rentalsByType };
 }
 
+async function getGatewayAnalytics() {
+  const snap = await col.where('type', '==', 'GATEWAY_CALL').get();
+  const events = snap.docs.map((d) => d.data());
+
+  const callsByService = {};
+  for (const event of events) {
+    const service = event.metadata?.service || 'unknown';
+    callsByService[service] = (callsByService[service] || 0) + 1;
+  }
+
+  const transitSnap = await col.where('type', '==', 'TRANSIT_QUERY').get();
+  const parkingSnap = await col.where('type', '==', 'PARKING_RESERVED').get();
+
+  return {
+    totalGatewayCalls: events.length,
+    callsByService,
+    transitQueries: transitSnap.size,
+    parkingReservations: parkingSnap.size,
+  };
+}
+
 module.exports = {
   trackEvent,
   findByCity,
   findByType,
   findAll,
   getRentalAnalytics,
+  getGatewayAnalytics,
 };

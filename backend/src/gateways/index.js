@@ -1,30 +1,47 @@
+/**
+ * Gateway Factory — Factory Method pattern
+ *
+ * Centralizes gateway instantiation. Callers never use `new ConcreteGateway()`
+ * directly — they call createGateway(type) or a typed helper.
+ * Swapping a mock for a real implementation requires changing only this file.
+ *
+ * Participants: all gateway interface + implementation classes,
+ *               services that consume gateways (TransitAdapter, ParkingAdapter,
+ *               BookingService via createPaymentGateway).
+ */
 const MockPaymentGateway = require('./payment/MockPaymentGateway');
 const MockWeatherGateway = require('./weather/MockWeatherGateway');
 const MockMapsGateway = require('./maps/MockMapsGateway');
 const MockParkingGateway = require('./parking/MockParkingGateway');
 const MockTransitGateway = require('./transit/MockTransitGateway');
 
-function createPaymentGateway() {
-  return new MockPaymentGateway();
+const GATEWAY_MAP = {
+  payment: () => new MockPaymentGateway(),
+  weather: () => new MockWeatherGateway(),
+  maps:    () => new MockMapsGateway(),
+  parking: () => new MockParkingGateway(),
+  transit: () => new MockTransitGateway(),
+};
+
+/**
+ * Unified factory method. Throws if type is unknown.
+ * @param {'payment'|'weather'|'maps'|'parking'|'transit'} type
+ */
+function createGateway(type) {
+  const factory = GATEWAY_MAP[type];
+  if (!factory) throw new Error(`Unknown gateway type: ${type}`);
+  return factory();
 }
 
-function createWeatherGateway() {
-  return new MockWeatherGateway();
-}
-
-function createMapsGateway() {
-  return new MockMapsGateway();
-}
-
-function createParkingGateway() {
-  return new MockParkingGateway();
-}
-
-function createTransitGateway() {
-  return new MockTransitGateway();
-}
+// Typed helpers kept for backwards compatibility and clarity at call sites.
+function createPaymentGateway() { return createGateway('payment'); }
+function createWeatherGateway()  { return createGateway('weather'); }
+function createMapsGateway()     { return createGateway('maps'); }
+function createParkingGateway()  { return createGateway('parking'); }
+function createTransitGateway()  { return createGateway('transit'); }
 
 module.exports = {
+  createGateway,
   createPaymentGateway,
   createWeatherGateway,
   createMapsGateway,

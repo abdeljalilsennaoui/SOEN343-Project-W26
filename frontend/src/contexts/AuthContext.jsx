@@ -7,11 +7,13 @@ import {
   onAuthStateChanged,
 } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
+import { getMyProfile } from '../services/api';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
   function register(email, password) {
@@ -27,19 +29,33 @@ export function AuthProvider({ children }) {
   }
 
   function logout() {
+    setUserRole(null);
     return signOut(auth);
   }
 
+  // Fetch the Firestore role whenever a user is signed in.
+  // This runs after every sign-in (email, Google, or page refresh).
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      if (user) {
+        try {
+          const profile = await getMyProfile();
+          setUserRole(profile.data.role);
+        } catch {
+          // Profile may not exist yet (registration in progress) — default to COMMUTER
+          setUserRole('COMMUTER');
+        }
+      } else {
+        setUserRole(null);
+      }
       setLoading(false);
     });
     return unsubscribe;
   }, []);
 
   return (
-    <AuthContext.Provider value={{ currentUser, loading, register, login, signInWithGoogle, logout }}>
+    <AuthContext.Provider value={{ currentUser, userRole, loading, register, login, signInWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );

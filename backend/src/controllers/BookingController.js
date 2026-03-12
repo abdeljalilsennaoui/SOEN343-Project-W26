@@ -1,4 +1,11 @@
-const BookingService = require('../services/BookingService');
+/**
+ * BookingController — GRASP Controller
+ *
+ * Handles HTTP request/response for the booking workflow.
+ * Delegates all business logic to BookingFacade (Facade pattern).
+ * Does not import models, services, or gateways directly.
+ */
+const BookingFacade = require('../services/BookingFacade');
 
 class BookingController {
   /**
@@ -10,7 +17,7 @@ class BookingController {
     try {
       const userId = req.uid;
       const { optionId, startTime, endTime, pickupLocation } = req.body;
-      const draft = await BookingService.createDraft({ userId, optionId, startTime, endTime, pickupLocation });
+      const draft = await BookingFacade.createDraft({ userId, optionId, startTime, endTime, pickupLocation });
       res.status(201).json({ data: draft });
     } catch (err) {
       next(err);
@@ -27,7 +34,7 @@ class BookingController {
       const { draftId } = req.params;
       const userId = req.uid;
       const { paymentDetails } = req.body;
-      const result = await BookingService.confirmDraft(draftId, userId, paymentDetails);
+      const result = await BookingFacade.confirmDraft(draftId, userId, paymentDetails);
       res.json({ data: result });
     } catch (err) {
       next(err);
@@ -43,8 +50,22 @@ class BookingController {
     try {
       const { bookingId } = req.params;
       const userId = req.uid;
-      const booking = await BookingService.completeBooking(bookingId, userId);
+      const booking = await BookingFacade.completeBooking(bookingId, userId);
       res.json({ data: booking });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * GET /api/bookings
+   * Returns all bookings for the authenticated user.
+   * Response 200: { data: Booking[], count: N }
+   */
+  async getMyBookings(req, res, next) {
+    try {
+      const bookings = await BookingFacade.getMyBookings(req.uid);
+      res.json({ data: bookings, count: bookings.length });
     } catch (err) {
       next(err);
     }

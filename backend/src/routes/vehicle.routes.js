@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { vehicleController } = require('../controllers');
+const mobilityController = require('../mvc/MobilityController');
 const { validateQuery, vehicleQuerySchema } = require('../middleware/validation');
 
 const router = Router();
@@ -7,7 +7,7 @@ const router = Router();
 router.get(
   '/vehicles',
   validateQuery(vehicleQuerySchema),
-  vehicleController.getVehicles.bind(vehicleController),
+  mobilityController.getVehicles.bind(mobilityController),
 );
 
 module.exports = router;

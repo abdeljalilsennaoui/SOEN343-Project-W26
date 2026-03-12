@@ -5,7 +5,7 @@
  * Subscribers (e.g. AnalyticsListener) register handlers without
  * being imported by or coupled to the controllers.
  *
- * Publishers: BookingController, ParkingController, PaymentController, TransitController
+ * Publishers: mvc/MobilityService.js
  * Subscribers: services/AnalyticsListener.js
  */
 const EventEmitter = require('events');

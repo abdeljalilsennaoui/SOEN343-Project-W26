@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { mobilitySearchController } = require('../controllers');
+const mobilityController = require('../mvc/MobilityController');
 const { validateQuery, mobilitySearchSchema } = require('../middleware/validation');
 
 const router = Router();
@@ -7,7 +7,7 @@ const router = Router();
 router.get(
   '/mobility/options/search',
   validateQuery(mobilitySearchSchema),
-  mobilitySearchController.searchOptions.bind(mobilitySearchController),
+  mobilityController.searchOptions.bind(mobilityController),
 );
 
 module.exports = router;

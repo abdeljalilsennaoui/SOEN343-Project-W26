@@ -1,9 +1,9 @@
 const { Router } = require('express');
-const transitController = require('../controllers/TransitController');
+const mobilityController = require('../mvc/MobilityController');
 
 const router = Router();
 
-router.get('/transit/schedule', transitController.getSchedule.bind(transitController));
-router.get('/transit/stops/nearby', transitController.getNearbyStops.bind(transitController));
+router.get('/transit/schedule', mobilityController.getTransitSchedule.bind(mobilityController));
+router.get('/transit/stops/nearby', mobilityController.getNearbyStops.bind(mobilityController));
 
 module.exports = router;

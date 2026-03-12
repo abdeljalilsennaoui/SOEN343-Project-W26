@@ -1,5 +1,4 @@
 const { Router } = require('express');
-const providerController = require('../controllers/ProviderController');
 const { requireAuth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/role');
 const { validateBody, validateQuery } = require('../middleware/validation');
@@ -21,22 +20,24 @@ const vehicleUpdateSchema = z.object({
   description: z.string().optional(),
 });
 
+const mobilityController = require('../mvc/MobilityController');
+
 const router = Router();
 
 const auth = [requireAuth, requireRole(UserRole.MOBILITY_PROVIDER, UserRole.CITY_ADMINISTRATOR, UserRole.SYSTEM_ADMINISTRATOR)];
 
 router.get('/provider/vehicles', ...auth,
-  providerController.getVehicles.bind(providerController));
+  mobilityController.getProviderVehicles.bind(mobilityController));
 
 router.post('/provider/vehicles', ...auth,
   validateBody(vehicleBodySchema),
-  providerController.addVehicle.bind(providerController));
+  mobilityController.addVehicle.bind(mobilityController));
 
 router.put('/provider/vehicles/:vehicleId', ...auth,
   validateBody(vehicleUpdateSchema),
-  providerController.updateVehicle.bind(providerController));
+  mobilityController.updateVehicle.bind(mobilityController));
 
 router.delete('/provider/vehicles/:vehicleId', ...auth,
-  providerController.deactivateVehicle.bind(providerController));
+  mobilityController.deactivateVehicle.bind(mobilityController));
 
 module.exports = router;

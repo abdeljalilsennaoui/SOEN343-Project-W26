@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { bookingController } = require('../controllers');
+const mobilityController = require('../mvc/MobilityController');
 const { validateBody, createDraftSchema, confirmDraftSchema } = require('../middleware/validation');
 const { requireAuth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/role');
@@ -12,7 +12,7 @@ router.post(
   requireAuth,
   requireRole(UserRole.COMMUTER),
   validateBody(createDraftSchema),
-  bookingController.createDraft.bind(bookingController),
+  mobilityController.createDraft.bind(mobilityController),
 );
 
 router.post(
@@ -20,20 +20,20 @@ router.post(
   requireAuth,
   requireRole(UserRole.COMMUTER),
   validateBody(confirmDraftSchema),
-  bookingController.confirmDraft.bind(bookingController),
+  mobilityController.confirmDraft.bind(mobilityController),
 );
 
 router.post(
   '/bookings/:bookingId/complete',
   requireAuth,
   requireRole(UserRole.COMMUTER),
-  bookingController.completeBooking.bind(bookingController),
+  mobilityController.completeBooking.bind(mobilityController),
 );
 
 router.get(
   '/bookings',
   requireAuth,
-  bookingController.getMyBookings.bind(bookingController),
+  mobilityController.getMyBookings.bind(mobilityController),
 );
 
 module.exports = router;

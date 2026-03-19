@@ -1,46 +1,60 @@
 /**
- * AnalyticsListener — Observer pattern (subscriber)
+ * AnalyticsListener — Observer pattern (subscriber) + Visitor Pattern (client)
  *
- * Registers handlers on EventBus for all domain events that require
- * analytics tracking. Controllers emit events; this module persists them.
- * Neither side imports the other — they are decoupled through EventBus.
+ * Registers handlers on EventBus for all domain events. When an event fires,
+ * it applies both concrete visitors to the typed event object via accept().
  *
- * Call register() once at application startup (app.js).
+ * The Visitor pattern provides double dispatch:
+ *   event.accept(visitor) → visitor.visitXxx(event)
+ * Each visitor independently handles the event — no instanceof checks,
+ * no conditional branching. New visitors (e.g. NotificationVisitor) are
+ * added here without touching any event class.
+ *
+ * Call register() once at application startup (server.js).
  */
 const EventBus = require('../lib/EventBus');
-const AnalyticsReport = require('../models/AnalyticsReport');
+const persistenceVisitor = require('../analytics/visitors/PersistenceVisitor');
+const loggingVisitor = require('../analytics/visitors/LoggingVisitor');
 
 function register() {
-  EventBus.on('RESERVATION_CREATED', ({ city, metadata }) => {
-    AnalyticsReport.trackEvent('RESERVATION_CREATED', city, metadata).catch(() => {});
+  EventBus.on('RESERVATION_CREATED', (event) => {
+    event.accept(persistenceVisitor);
+    event.accept(loggingVisitor);
   });
 
-  EventBus.on('BOOKING_CONFIRMED', ({ city, metadata }) => {
-    AnalyticsReport.trackEvent('BOOKING_CONFIRMED', city, metadata).catch(() => {});
+  EventBus.on('BOOKING_CONFIRMED', (event) => {
+    event.accept(persistenceVisitor);
+    event.accept(loggingVisitor);
   });
 
-  EventBus.on('VEHICLE_RETURNED', ({ city, metadata }) => {
-    AnalyticsReport.trackEvent('VEHICLE_RETURNED', city, metadata).catch(() => {});
+  EventBus.on('PAYMENT_PROCESSED', (event) => {
+    event.accept(persistenceVisitor);
+    event.accept(loggingVisitor);
   });
 
-  EventBus.on('PAYMENT_PROCESSED', ({ city, metadata }) => {
-    AnalyticsReport.trackEvent('PAYMENT_PROCESSED', city, metadata).catch(() => {});
+  EventBus.on('VEHICLE_RETURNED', (event) => {
+    event.accept(persistenceVisitor);
+    event.accept(loggingVisitor);
   });
 
-  EventBus.on('PARKING_RESERVED', ({ city, metadata }) => {
-    AnalyticsReport.trackEvent('PARKING_RESERVED', city, metadata).catch(() => {});
+  EventBus.on('PARKING_RESERVED', (event) => {
+    event.accept(persistenceVisitor);
+    event.accept(loggingVisitor);
   });
 
-  EventBus.on('PARKING_RELEASED', ({ city, metadata }) => {
-    AnalyticsReport.trackEvent('PARKING_RELEASED', city, metadata).catch(() => {});
+  EventBus.on('PARKING_RELEASED', (event) => {
+    event.accept(persistenceVisitor);
+    event.accept(loggingVisitor);
   });
 
-  EventBus.on('TRANSIT_QUERY', ({ city, metadata }) => {
-    AnalyticsReport.trackEvent('TRANSIT_QUERY', city, metadata).catch(() => {});
+  EventBus.on('TRANSIT_QUERY', (event) => {
+    event.accept(persistenceVisitor);
+    event.accept(loggingVisitor);
   });
 
-  EventBus.on('GATEWAY_CALL', ({ metadata }) => {
-    AnalyticsReport.trackEvent('GATEWAY_CALL', null, metadata).catch(() => {});
+  EventBus.on('GATEWAY_CALL', (event) => {
+    event.accept(persistenceVisitor);
+    event.accept(loggingVisitor);
   });
 }
 

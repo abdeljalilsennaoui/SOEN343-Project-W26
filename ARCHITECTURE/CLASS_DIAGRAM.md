@@ -449,25 +449,76 @@ View displays result to user
 ### State Pattern — BookingStateMachine
 ```
 ┌─────────────────────────────────────────────────────┐
-│    BookingStateMachine  (lib/BookingStateMachine.js) │
-│          <<Singleton>>                               │
+│  <<abstract>> BookingState  (lib/states/BookingState.js) │
 │─────────────────────────────────────────────────────│
-│ + transition(booking, toStatus): toStatus            │
-│ + canTransition(from, to): boolean                   │
+│ + getName(): string                                  │
+│ + toActive(context)   → throws ApiError 409          │
+│ + toComplete(context) → throws ApiError 409          │
+│ + toFailed(context)   → throws ApiError 409          │
+└──────────────┬──────────────────────────────────────┘
+               │ extends
+    ┌──────────┼──────────┬───────────────┐
+    ▼          ▼          ▼               ▼
+┌──────────┐ ┌──────────┐ ┌───────────┐ ┌───────────┐
+│DraftState│ │ActiveState│ │CompleteState│ │FailedState│
+│──────────│ │──────────│ │───────────│ │───────────│
+│DRAFT     │ │ACTIVE    │ │COMPLETE   │ │FAILED     │
+│──────────│ │──────────│ │(terminal) │ │(terminal) │
+│toActive()│ │toComplete│ │all throw  │ │all throw  │
+│→ActiveSt │ │→CompleteSt│ │409        │ │409        │
+│toFailed()│ └──────────┘ └───────────┘ └───────────┘
+│→FailedSt │
+└──────────┘
+
+┌─────────────────────────────────────────────────────┐
+│  BookingStateMachine  (lib/BookingStateMachine.js)   │
+│          <<Context — exports Class, not instance>>   │
 │─────────────────────────────────────────────────────│
-│  TRANSITIONS map:                                    │
-│    DRAFT   → [ACTIVE, FAILED]                        │
-│    ACTIVE  → [COMPLETE]                              │
-│    COMPLETE→ []  (terminal)                          │
-│    FAILED  → []  (terminal)                          │
+│ - state: BookingState                                │
 │─────────────────────────────────────────────────────│
-│  Throws ApiError 409 on illegal transition.          │
-│  Used by: MobilityService                            │
+│ + constructor(currentStatus)  → _resolve(status)     │
+│ + setState(newState)                                 │
+│ + toActive()   → delegates to this.state.toActive()  │
+│ + toComplete() → delegates to this.state.toComplete()│
+│ + toFailed()   → delegates to this.state.toFailed()  │
+│─────────────────────────────────────────────────────│
+│  Client: new BookingStateMachine(booking.status)     │
+│          .toActive()   // throws 409 if not DRAFT    │
+│  Zero if/switch logic — all delegated to state.      │
 └─────────────────────────────────────────────────────┘
 ```
 
-### Strategy Pattern — Payment Gateway
+### Strategy Pattern — Pricing + Payment Gateway
 ```
+┌─────────────────────────────────────────────────────┐
+│  <<interface>> IPricingStrategy                      │
+│  (strategies/pricing/IPricingStrategy.js)            │
+│─────────────────────────────────────────────────────│
+│ + calculatePrice(option, startTime, endTime): number │
+└──────────────────────┬──────────────────────────────┘
+                       │ extends
+          ┌────────────┴─────────────────┐
+          ▼                              ▼
+┌──────────────────────┐   ┌───────────────────────────┐
+│PerMinutePricingStrat.│   │PeakHourPricingStrategy    │
+│(strategies/pricing/) │   │(strategies/pricing/)      │
+│──────────────────────│   │───────────────────────────│
+│basePrice × minutes   │   │1.5× surcharge 07–09, 17–19│
+└──────────────────────┘   └───────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│  PricingContext  (services/PricingService.js)        │
+│          <<Singleton — exported as instance>>        │
+│─────────────────────────────────────────────────────│
+│ - strategy: IPricingStrategy                         │
+│─────────────────────────────────────────────────────│
+│ + setStrategy(strategy)                              │
+│ + calculatePrice(option, start, end): number         │
+│─────────────────────────────────────────────────────│
+│  Default: PerMinutePricingStrategy                   │
+│  Client: MobilityService.calculatePrice(...)         │
+└─────────────────────────────────────────────────────┘
+
 ┌─────────────────────────────────────────────────────┐
 │   <<interface>> IPaymentGateway                      │
 │   (gateways/payment/IPaymentGateway.js)              │
@@ -486,6 +537,113 @@ View displays result to user
           └─────────────────────────┘
 Context: MobilityService calls paymentGateway.charge()
          against the IPaymentGateway interface only.
+```
+
+### Command Pattern — CommandRegistry + MobilityRequestHandler
+```
+┌─────────────────────────────────────────────────────┐
+│  <<interface>> ICommand  (commands/ICommand.js)      │
+│─────────────────────────────────────────────────────│
+│ + execute(request: MobilityRequest)                  │
+│       : Promise<MobilityResponse>                    │
+└──────────────────────┬──────────────────────────────┘
+                       │ extends (19 concrete commands)
+          ┌────────────┼──────────────┬────────────────┐
+          ▼            ▼              ▼                ▼
+┌─────────────────┐ ┌─────────────┐ ┌──────────────┐ ...
+│CreateBooking    │ │ConfirmBooking│ │GetVehicles   │
+│DraftCommand     │ │Command      │ │Command       │
+│─────────────────│ │─────────────│ │──────────────│
+│receiver:        │ │receiver:    │ │receiver:     │
+│MobilityService  │ │MobilityServ.│ │MobilityServ. │
+│─────────────────│ │─────────────│ │──────────────│
+│execute(request) │ │execute(req) │ │execute(req)  │
+│→ createReserv() │ │→ processPay.│ │→ getVehicles │
+└─────────────────┘ └─────────────┘ └──────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│  CommandRegistry  (commands/CommandRegistry.js)      │
+│─────────────────────────────────────────────────────│
+│  Map<string, ICommand>:                              │
+│    'GET_VEHICLES'         → GetVehiclesCommand       │
+│    'CREATE_BOOKING_DRAFT' → CreateBookingDraftCommand│
+│    'CONFIRM_BOOKING'      → ConfirmBookingCommand    │
+│    'COMPLETE_BOOKING'     → CompleteBookingCommand   │
+│    'GET_MY_BOOKINGS'      → GetMyBookingsCommand     │
+│    ... 14 more entries (19 total)                    │
+│─────────────────────────────────────────────────────│
+│  MobilityService injected into every command at init │
+└─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│  MobilityRequestHandler  (mvc/MobilityRequestHandler)│
+│          <<Invoker — Singleton>>                     │
+│─────────────────────────────────────────────────────│
+│ + handle(request: MobilityRequest)                   │
+│       : Promise<MobilityResponse>                    │
+│─────────────────────────────────────────────────────│
+│  registry.get(request.type) → command.execute(req)   │
+│  No knowledge of MobilityService or any operation.   │
+│  New request type = one registry entry; no changes here│
+└─────────────────────────────────────────────────────┘
+```
+
+### Visitor Pattern — Analytics Events + Visitors
+```
+┌─────────────────────────────────────────────────────┐
+│  <<abstract>> AnalyticsEvent                         │
+│  (analytics/events/AnalyticsEvent.js)                │
+│─────────────────────────────────────────────────────│
+│ + get type(): string      (abstract)                 │
+│ + get city(): string      (default: null)            │
+│ + get metadata(): object  (default: {})              │
+│ + accept(visitor)         (abstract)                 │
+└──────────────────────┬──────────────────────────────┘
+                       │ extends (8 concrete events)
+    ┌──────────────────┼──────────────────────────┐
+    ▼                  ▼                          ▼
+┌──────────────────┐ ┌────────────────────┐     ...
+│ReservationCreated│ │BookingConfirmedEvent│
+│Event             │ │────────────────────│
+│──────────────────│ │city, bookingId,    │
+│city, vehicleType,│ │type, amount        │
+│optionId, userId  │ │────────────────────│
+│──────────────────│ │accept(v)→v.visit(this)│
+│accept(v)→v.visit │ └────────────────────┘
+│(this)            │
+└──────────────────┘
+(Also: PaymentProcessedEvent, VehicleReturnedEvent,
+ ParkingReservedEvent, ParkingReleasedEvent,
+ TransitQueryEvent, GatewayCallEvent)
+
+┌─────────────────────────────────────────────────────┐
+│  <<interface>> IAnalyticsVisitor                     │
+│  (analytics/visitors/IAnalyticsVisitor.js)           │
+│─────────────────────────────────────────────────────│
+│ + visit(event: AnalyticsEvent)                       │
+└──────────────────────┬──────────────────────────────┘
+                       │ extends
+          ┌────────────┴────────────┐
+          ▼                        ▼
+┌──────────────────────┐  ┌──────────────────────┐
+│PersistenceVisitor    │  │LoggingVisitor        │
+│(visitors/Persistence │  │(visitors/LoggingVisi │
+│ Visitor.js)          │  │ tor.js)              │
+│──────────────────────│  │──────────────────────│
+│visit(event)          │  │visit(event)          │
+│→ AnalyticsReport     │  │→ console.log(...)    │
+│  .trackEvent(...)    │  │  event.type, city,   │
+│  .catch(() => {})    │  │  metadata            │
+└──────────────────────┘  └──────────────────────┘
+
+Client: AnalyticsListener
+  EventBus.on('RESERVATION_CREATED', (event) => {
+    event.accept(persistenceVisitor);
+    event.accept(loggingVisitor);
+  });
+Double dispatch: event.accept(v) → v.visit(this)
+  — 1st dispatch selects accept() on the concrete event
+  — 2nd dispatch routes to visitor.visit(event)
 ```
 
 ### Factory Method Pattern — Gateway Factory
@@ -527,14 +685,21 @@ MobilityPresenter                     ──formats─▶  ViewModel
 ViewModel                             ──rendered by─▶  View
 
 // Design patterns within the Model:
-MobilityService                       ──uses──▶  BookingStateMachine (State)
+MobilityService                       ──uses──▶  BookingStateMachine (State — context)
+BookingStateMachine                   ──delegates─▶  DraftState / ActiveState / CompleteState / FailedState
 MobilityService                       ──emits──▶  EventBus (Observer — publisher)
 EventBus                              ──notifies─▶  AnalyticsListener (Observer — subscriber)
+AnalyticsListener                     ──calls──▶  event.accept(visitor) (Visitor)
 AnalyticsListener                     ──persists─▶  SUMMSDatabase
-MobilityService                       ──calls──▶  IPaymentGateway (Strategy)
+MobilityService                       ──calls──▶  IPricingStrategy (Strategy — pricing)
+MobilityService                       ──calls──▶  IPaymentGateway (Strategy — payment)
 GatewayFactory                        ──creates─▶  IPaymentGateway / ITransitGateway (Factory Method)
 MobilityDataGateway                   ──adapts──▶  Firestore models (Adapter)
 MobilityDataMapper                    ──translates─▶  MobilityEntities (Adapter)
+MobilityController                    ──calls──▶  MobilityRequestHandler (Command — Invoker)
+MobilityRequestHandler                ──looks up─▶  CommandRegistry (Command — registry)
+CommandRegistry                       ──dispatches─▶  ConcreteCommand.execute() (Command)
+ConcreteCommand                       ──calls──▶  MobilityService (Command — Receiver)
 ```
 
 ---

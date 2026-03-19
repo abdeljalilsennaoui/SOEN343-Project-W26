@@ -21,6 +21,16 @@ const ApiError = require('../models/ApiError');
 const { BookingStatus, ReceiptStatus, VehicleStatus, TripMode, UserRole } = require('../models/enums');
 const { v4: uuidv4 } = require('uuid');
 
+// Visitor Pattern — typed event objects (each carries accept() for double dispatch)
+const ReservationCreatedEvent = require('../analytics/events/ReservationCreatedEvent');
+const BookingConfirmedEvent   = require('../analytics/events/BookingConfirmedEvent');
+const PaymentProcessedEvent   = require('../analytics/events/PaymentProcessedEvent');
+const VehicleReturnedEvent    = require('../analytics/events/VehicleReturnedEvent');
+const ParkingReservedEvent    = require('../analytics/events/ParkingReservedEvent');
+const ParkingReleasedEvent    = require('../analytics/events/ParkingReleasedEvent');
+const TransitQueryEvent       = require('../analytics/events/TransitQueryEvent');
+const GatewayCallEvent        = require('../analytics/events/GatewayCallEvent');
+
 const paymentGateway = createPaymentGateway();
 const transitGateway = createTransitGateway();
 
@@ -71,7 +81,7 @@ class MobilityService {
     const totalPrice = PricingService.calculatePrice(option, startTime, endTime);
     const booking = await MobilityDataGateway.saveBooking({ userId, optionId, startTime, endTime, pickupLocation, totalPrice });
 
-    EventBus.emit('RESERVATION_CREATED', { city: option.city, metadata: { vehicleType: option.type, optionId, userId } });
+    EventBus.emit('RESERVATION_CREATED', new ReservationCreatedEvent({ city: option.city, vehicleType: option.type, optionId, userId }));
     return booking;
   }
 
@@ -83,7 +93,8 @@ class MobilityService {
     if (!booking) throw new ApiError('BOOKING_NOT_FOUND', `Booking ${draftId} not found`, 404);
     if (booking.userId !== userId) throw new ApiError('FORBIDDEN', 'You are not authorized to confirm this booking.', 403);
 
-    BookingStateMachine.transition(booking, BookingStatus.ACTIVE);
+    // State pattern: validate DRAFT → ACTIVE is a legal transition before proceeding
+    new BookingStateMachine(booking.status).toActive();
 
     const option = await MobilityDataGateway.findMobilityOption(booking.optionId);
     if (!option || !(await AvailabilityService.isAvailable(option, booking.startTime, booking.endTime, draftId))) {
@@ -93,6 +104,8 @@ class MobilityService {
     const gatewayResult = await paymentGateway.charge(booking.totalPrice, paymentDetails);
 
     if (!gatewayResult.success) {
+      // State pattern: validate DRAFT → FAILED is a legal transition
+      new BookingStateMachine(booking.status).toFailed();
       await MobilityDataGateway.updateBooking(draftId, { status: BookingStatus.FAILED });
       await MobilityDataGateway.saveReceipt({ bookingId: draftId, amount: booking.totalPrice, providerRef: gatewayResult.transactionId, status: ReceiptStatus.FAILED });
       throw new ApiError('PAYMENT_FAILED', gatewayResult.message || 'Payment was declined.', 402);
@@ -101,8 +114,8 @@ class MobilityService {
     const updatedBooking = await MobilityDataGateway.updateBooking(draftId, { status: BookingStatus.ACTIVE });
     const receipt = await MobilityDataGateway.saveReceipt({ bookingId: draftId, amount: booking.totalPrice, providerRef: gatewayResult.transactionId, status: ReceiptStatus.SUCCESS });
 
-    EventBus.emit('BOOKING_CONFIRMED', { city: option.city, metadata: { bookingId: draftId, type: option.type, amount: booking.totalPrice } });
-    EventBus.emit('PAYMENT_PROCESSED', { city: option.city, metadata: { bookingId: draftId, amount: booking.totalPrice } });
+    EventBus.emit('BOOKING_CONFIRMED', new BookingConfirmedEvent({ city: option.city, bookingId: draftId, type: option.type, amount: booking.totalPrice }));
+    EventBus.emit('PAYMENT_PROCESSED', new PaymentProcessedEvent({ city: option.city, bookingId: draftId, amount: booking.totalPrice }));
 
     return { booking: updatedBooking, receipt };
   }
@@ -116,8 +129,11 @@ class MobilityService {
     if (booking.userId !== userId) throw new ApiError('FORBIDDEN', 'You are not authorized to complete this booking.', 403);
     if (booking.status === BookingStatus.COMPLETE) return booking;
 
-    BookingStateMachine.transition(booking, BookingStatus.COMPLETE);
-    return MobilityDataGateway.updateBooking(bookingId, { status: BookingStatus.COMPLETE });
+    // State pattern: validate ACTIVE → COMPLETE is a legal transition
+    new BookingStateMachine(booking.status).toComplete();
+    const completed = await MobilityDataGateway.updateBooking(bookingId, { status: BookingStatus.COMPLETE });
+    EventBus.emit('VEHICLE_RETURNED', new VehicleReturnedEvent({ city: null, bookingId }));
+    return completed;
   }
 
   /**
@@ -171,43 +187,43 @@ class MobilityService {
   // ── Parking Access ────────────────────────────────────────────────────────
 
   async getParkingFacilities(city) {
-    EventBus.emit('GATEWAY_CALL', { metadata: { service: 'parking', operation: 'getFacilities', success: true } });
+    EventBus.emit('GATEWAY_CALL', new GatewayCallEvent({ service: 'parking', operation: 'getFacilities', success: true }));
     return MobilityDataGateway.findParkingFacilities(city);
   }
 
   async getFacilityWithSpots(facilityId) {
-    EventBus.emit('GATEWAY_CALL', { metadata: { service: 'parking', operation: 'getFacilitySpots', success: true } });
+    EventBus.emit('GATEWAY_CALL', new GatewayCallEvent({ service: 'parking', operation: 'getFacilitySpots', success: true }));
     return MobilityDataGateway.findFacilityWithSpots(facilityId);
   }
 
   async getAvailableSpots(city) {
-    EventBus.emit('GATEWAY_CALL', { metadata: { service: 'parking', operation: 'getAvailableSpots', success: true } });
+    EventBus.emit('GATEWAY_CALL', new GatewayCallEvent({ service: 'parking', operation: 'getAvailableSpots', success: true }));
     return MobilityDataGateway.findAvailableSpots(city);
   }
 
   async reserveParkingSpot(spotId) {
     const spot = await MobilityDataGateway.reserveSpot(spotId);
-    EventBus.emit('PARKING_RESERVED', { city: spot.city || null, metadata: { spotId } });
+    EventBus.emit('PARKING_RESERVED', new ParkingReservedEvent({ city: spot.city || null, spotId }));
     return spot;
   }
 
   async releaseParkingSpot(spotId) {
     const spot = await MobilityDataGateway.releaseSpot(spotId);
-    EventBus.emit('PARKING_RELEASED', { city: spot.city || null, metadata: { spotId } });
+    EventBus.emit('PARKING_RELEASED', new ParkingReleasedEvent({ city: spot.city || null, spotId }));
     return spot;
   }
 
   // ── Transit Access ────────────────────────────────────────────────────────
 
   async getTransitSchedule(city, line = null) {
-    EventBus.emit('TRANSIT_QUERY', { city, metadata: { line } });
-    EventBus.emit('GATEWAY_CALL', { metadata: { service: 'transit', operation: 'getSchedule', success: true } });
+    EventBus.emit('TRANSIT_QUERY', new TransitQueryEvent({ city, line }));
+    EventBus.emit('GATEWAY_CALL', new GatewayCallEvent({ service: 'transit', operation: 'getSchedule', success: true }));
     const raw = await transitGateway.getSchedule(city, line);
     return raw.map((e) => ({ city: e.city, line: e.line, type: e.type, nextArrivals: e.nextArrivals, status: e.status }));
   }
 
   async getNearbyStops(lat, lng) {
-    EventBus.emit('GATEWAY_CALL', { metadata: { service: 'transit', operation: 'getNearbyStops', success: true } });
+    EventBus.emit('GATEWAY_CALL', new GatewayCallEvent({ service: 'transit', operation: 'getNearbyStops', success: true }));
     const raw = await transitGateway.getNearbyStops(lat, lng);
     return raw.map((s) => ({ id: s.id, name: s.name, distanceKm: s.distance, coordinates: { lat: s.latitude, lng: s.longitude } }));
   }

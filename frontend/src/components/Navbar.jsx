@@ -1,5 +1,19 @@
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useState } from 'react';
+import { MenuIcon } from 'lucide-react';
+
+const navItems = [
+  { to: '/', label: 'Home' },
+  { to: '/vehicles', label: 'Vehicles' },
+  { to: '/book', label: 'Book' },
+  { to: '/bookings', label: 'My Bookings' },
+  { to: '/map', label: 'Map' },
+  { to: '/old-map', label: 'Old Map' },
+  { to: '/analytics', label: 'Analytics' },
+  { to: '/parking', label: 'Parking' },
+  { to: '/transit', label: 'Transit' },
+];
 
 const ROLE_LABELS = {
   COMMUTER: 'Commuter',
@@ -17,44 +31,110 @@ const ROLE_STYLES = {
 
 function Navbar() {
   const { currentUser, userRole, logout } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
 
-  const isProvider = userRole === 'MOBILITY_PROVIDER' || userRole === 'CITY_ADMINISTRATOR' || userRole === 'SYSTEM_ADMINISTRATOR';
+  const isProvider =
+    userRole === 'MOBILITY_PROVIDER' ||
+    userRole === 'CITY_ADMINISTRATOR' ||
+    userRole === 'SYSTEM_ADMINISTRATOR';
+
+  const getNavClassName = ({ isActive }) =>
+    `block w-full rounded-md p-3 text-sm font-medium transition ${
+      isActive
+        ? 'bg-white text-slate-900'
+        : 'text-slate-300 hover:bg-white/10 hover:text-white'
+    }`;
 
   return (
-    <nav className="bg-slate-900 text-white flex items-center justify-between px-8 py-3">
-      <div>
-        <Link to="/" className="text-2xl font-bold text-white no-underline">SUMMS</Link>
-      </div>
-      <ul className="flex gap-5 list-none text-sm">
-        <li><Link to="/" className="text-gray-300 hover:text-white no-underline transition-colors">Home</Link></li>
-        <li><Link to="/vehicles" className="text-gray-300 hover:text-white no-underline transition-colors">Vehicles</Link></li>
-        <li><Link to="/book" className="text-gray-300 hover:text-white no-underline transition-colors">Book</Link></li>
-        <li><Link to="/bookings" className="text-gray-300 hover:text-white no-underline transition-colors">My Bookings</Link></li>
-        <li><Link to="/parking" className="text-gray-300 hover:text-white no-underline transition-colors">Parking</Link></li>
-        <li><Link to="/transit" className="text-gray-300 hover:text-white no-underline transition-colors">Transit</Link></li>
-        <li><Link to="/map" className="text-gray-300 hover:text-white no-underline transition-colors">Map</Link></li>
-        <li><Link to="/analytics" className="text-gray-300 hover:text-white no-underline transition-colors">Analytics</Link></li>
-        {isProvider && (
-          <li><Link to="/provider" className="text-amber-400 hover:text-amber-300 no-underline transition-colors font-medium">Provider</Link></li>
-        )}
-      </ul>
-      <div className="flex items-center gap-3">
-        {userRole && (
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_STYLES[userRole] || 'bg-gray-700 text-gray-300'}`}>
-            {ROLE_LABELS[userRole] || userRole}
-          </span>
-        )}
-        <span className="text-gray-400 text-sm truncate max-w-36">
-          {currentUser?.displayName || currentUser?.email}
-        </span>
-        <button
-          onClick={logout}
-          className="text-sm text-gray-300 hover:text-white transition-colors"
-        >
-          Sign out
-        </button>
-      </div>
-    </nav>
+    <header className="sticky top-0 z-40 border-b border-white/15 bg-slate-950/90 px-4 py-3 text-white backdrop-blur-xl">
+      <nav className="flex items-center justify-between">
+        <Link to="/" className="text-xl font-semibold">
+          CityFlow
+        </Link>
+        <ul className="hidden md:flex items-center gap-2">
+          {navItems.map((item) => (
+            <li key={item.to}>
+              <NavLink to={item.to} className={getNavClassName}>
+                {item.label}
+              </NavLink>
+            </li>
+          ))}
+          {isProvider && (
+            <li>
+              <NavLink to="/provider" className={getNavClassName}>
+                Provider
+              </NavLink>
+            </li>
+          )}
+        </ul>
+        <div className="flex items-center gap-2">
+          {userRole && (
+            <span
+              className={`hidden md:inline text-xs px-2 py-0.5 rounded-full font-medium ${
+                ROLE_STYLES[userRole] || 'bg-gray-700 text-gray-300'
+              }`}
+            >
+              {ROLE_LABELS[userRole] || userRole}
+            </span>
+          )}
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="md:hidden p-2 rounded-md hover:bg-white/10"
+          >
+            <MenuIcon className="h-5 w-5" />
+          </button>
+          <button
+            onClick={logout}
+            className="hidden md:inline rounded-md border border-white/20 px-3 py-1 text-xs"
+          >
+            Sign out
+          </button>
+        </div>
+      </nav>
+      {isOpen && (
+        <div className="mt-3 md:hidden rounded-md border border-white/10 bg-slate-900 p-3 space-y-2">
+
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={getNavClassName}
+              onClick={() => setIsOpen(false)}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+
+          {isProvider && (
+            <NavLink
+              to="/provider"
+              className={getNavClassName}
+              onClick={() => setIsOpen(false)}
+            >
+              Provider
+            </NavLink>
+          )}
+          <div className="pt-3 border-t border-white/10 text-sm text-slate-300">
+            {currentUser?.displayName || currentUser?.email}
+          </div>
+          {userRole && (
+            <span
+              className={`inline-block mt-2 text-xs px-2 py-0.5 rounded-full ${
+                ROLE_STYLES[userRole] || 'bg-gray-700 text-gray-300'
+              }`}
+            >
+              {ROLE_LABELS[userRole]}
+            </span>
+          )}
+          <button
+            onClick={logout}
+            className="w-full mt-3 rounded-md border border-white/20 px-3 py-2 text-sm"
+          >
+            Sign out
+          </button>
+        </div>
+      )}
+    </header>
   );
 }
 

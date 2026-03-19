@@ -28,11 +28,28 @@ async function request(endpoint, options = {}) {
   return data;
 }
 
+// ── User ─────────────────────────────────────────────────────────────────────
+
+export function registerUser(role) {
+  return request('/users/register', {
+    method: 'POST',
+    body: JSON.stringify({ role }),
+  });
+}
+
+export function getMyProfile() {
+  return request('/users/me');
+}
+
+// ── Vehicles ─────────────────────────────────────────────────────────────────
+
 export function getVehicles(params = {}) {
   const query = new URLSearchParams(params).toString();
   const endpoint = query ? `/vehicles?${query}` : '/vehicles';
   return request(endpoint);
 }
+
+// ── Legacy reservation flow ───────────────────────────────────────────────────
 
 export function createReservation(userId, vehicleId) {
   return request('/reservations', {
@@ -55,9 +72,7 @@ export function returnVehicle(reservationId) {
   });
 }
 
-export function getRentalAnalytics() {
-  return request('/analytics/rentals');
-}
+// ── Booking workflow (draft → confirm → complete) ─────────────────────────────
 
 export function searchMobilityOptions(params = {}) {
   const query = new URLSearchParams(params).toString();
@@ -76,4 +91,86 @@ export function confirmBooking(draftId, token) {
     method: 'POST',
     body: JSON.stringify({ paymentDetails: { token } }),
   });
+}
+
+export function completeBooking(bookingId) {
+  return request(`/bookings/${bookingId}/complete`, {
+    method: 'POST',
+  });
+}
+
+export function getMyBookings() {
+  return request('/bookings');
+}
+
+// ── Provider vehicle management ───────────────────────────────────────────────
+
+export function getProviderVehicles() {
+  return request('/provider/vehicles');
+}
+
+export function addProviderVehicle(data) {
+  return request('/provider/vehicles', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateProviderVehicle(vehicleId, data) {
+  return request(`/provider/vehicles/${vehicleId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deactivateProviderVehicle(vehicleId) {
+  return request(`/provider/vehicles/${vehicleId}`, { method: 'DELETE' });
+}
+
+// ── Parking ───────────────────────────────────────────────────────────────────
+
+export function getParkingFacilities(city) {
+  const query = city ? `?city=${encodeURIComponent(city)}` : '';
+  return request(`/parking/facilities${query}`);
+}
+
+export function getAvailableSpots(city) {
+  const query = city ? `?city=${encodeURIComponent(city)}` : '';
+  return request(`/parking/spots/available${query}`);
+}
+
+export function reserveParkingSpot(spotId) {
+  return request('/parking/spots/reserve', {
+    method: 'POST',
+    body: JSON.stringify({ spotId }),
+  });
+}
+
+export function releaseParkingSpot(spotId) {
+  return request('/parking/spots/release', {
+    method: 'POST',
+    body: JSON.stringify({ spotId }),
+  });
+}
+
+// ── Transit ───────────────────────────────────────────────────────────────────
+
+export function getTransitSchedule(city, line = null) {
+  const params = new URLSearchParams({ city });
+  if (line) params.set('line', line);
+  return request(`/transit/schedule?${params.toString()}`);
+}
+
+export function getNearbyStops(lat, lng) {
+  return request(`/transit/stops/nearby?lat=${lat}&lng=${lng}`);
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+
+export function getRentalAnalytics() {
+  return request('/analytics/rentals');
+}
+
+export function getGatewayAnalytics() {
+  return request('/analytics/gateway');
 }

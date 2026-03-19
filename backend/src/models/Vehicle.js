@@ -47,6 +47,39 @@ async function releaseVehicle(id) {
   return updateStatus(id, VehicleStatus.AVAILABLE);
 }
 
+async function create({ city, type, pricePerMin, providerId, description = '' }) {
+  const { v4: uuidv4 } = require('uuid');
+  const id = uuidv4();
+  const vehicle = {
+    id,
+    city,
+    type,
+    pricePerMin,
+    providerId,
+    description,
+    status: VehicleStatus.AVAILABLE,
+    createdAt: new Date().toISOString(),
+  };
+  await col.doc(id).set(vehicle);
+  return vehicle;
+}
+
+async function update(id, fields) {
+  const vehicle = await findById(id);
+  if (!vehicle) return null;
+  const allowed = ['city', 'type', 'pricePerMin', 'description', 'status'];
+  const patch = {};
+  for (const key of allowed) {
+    if (fields[key] !== undefined) patch[key] = fields[key];
+  }
+  await col.doc(id).update(patch);
+  return { ...vehicle, ...patch };
+}
+
+async function deactivate(id) {
+  return updateStatus(id, VehicleStatus.OUT_OF_SERVICE);
+}
+
 module.exports = {
   findAll,
   findById,
@@ -54,4 +87,7 @@ module.exports = {
   getAvailableVehicles,
   reserveVehicle,
   releaseVehicle,
+  create,
+  update,
+  deactivate,
 };

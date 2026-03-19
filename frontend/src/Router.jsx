@@ -7,6 +7,7 @@ import ReservationForm from './pages/ReservationForm';
 import ReservationStatus from './pages/ReservationStatus';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import MapPage from '@/pages/Map';
+import OldMapPage from '@/pages/OldMap';
 import Analytics from '@/pages/Analytics';
 import Login from '@/pages/Auth/Login';
 import Register from '@/pages/Auth/Register';
@@ -31,6 +32,7 @@ export default function Router() {
                             <Navbar />
                             <Routes>
                             <Route path="/map" element={<MapPage />} />
+                            <Route path="/old-map" element={<OldMapPage />} />
                             <Route path="/" element={<PageLayout><Home /></PageLayout>} />
                             <Route path="/vehicles" element={<PageLayout><VehicleList /></PageLayout>} />
                             <Route path="/reserve/:vehicleId" element={<PageLayout><ReservationForm /></PageLayout>} />

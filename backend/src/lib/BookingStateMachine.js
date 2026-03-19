@@ -1,86 +1,81 @@
 /**
- * BookingStateMachine — State pattern
+ * BookingStateMachine — State Pattern (context)
  *
- * Design problem:
- *   BookingService needs to enforce that booking status transitions follow a
- *   strict lifecycle (DRAFT → ACTIVE → COMPLETE; DRAFT → FAILED). Without a
- *   dedicated class, these rules are scattered as if-checks across multiple
- *   service methods, violating High Cohesion and making illegal transitions
- *   easy to miss.
+ * Maintains a reference to the current BookingState object and
+ * delegates all transition requests to it. The context never contains
+ * any transition logic — that belongs exclusively to the state classes.
  *
- * Why this pattern fits:
- *   The booking lifecycle is a textbook finite state machine — a fixed set of
- *   states with explicit allowed transitions and terminal states. The State
- *   pattern centralises all transition rules in one class.
+ * Lifecycle:
+ *   DRAFT ──(toActive)──► ACTIVE ──(toComplete)──► COMPLETE
+ *   DRAFT ──(toFailed)──► FAILED
+ *   COMPLETE and FAILED are terminal — all actions throw 409.
  *
- * Participating classes/files:
- *   - BookingStateMachine (this file) — the state machine / context
- *   - models/enums.js BookingStatus  — state identifiers
- *   - services/BookingService.js     — client that calls transition()
+ * Usage (MobilityService creates one context per transition attempt):
+ *   new BookingStateMachine(booking.status).toActive();   // throws 409 if not DRAFT
+ *   new BookingStateMachine(booking.status).toComplete(); // throws 409 if not ACTIVE
+ *   new BookingStateMachine(booking.status).toFailed();   // throws 409 if not DRAFT
  *
- * Benefits:
- *   - All transition rules in one place (High Cohesion)
- *   - Adding a new state requires changing only the TRANSITIONS map
- *   - Consistent 409 error on any illegal move (no duplicate if-checks)
- *
- * Consequences if not used:
- *   BookingService would contain repeated, scattered status checks that are
- *   easy to forget and hard to keep consistent as the lifecycle evolves.
- *
- * Course/GRASP alignment:
- *   Pure Fabrication — BookingStateMachine is not a domain entity; it is
- *   invented solely to manage behaviour (transition enforcement), keeping
- *   BookingService cohesive. Supports High Cohesion and Low Coupling.
- *
- * States:   DRAFT → ACTIVE  → COMPLETE
- *           DRAFT → FAILED
- * Terminal: COMPLETE, FAILED (no further transitions)
+ * Participating classes:
+ *   - BookingState (lib/states/BookingState.js)  — state interface
+ *   - DraftState, ActiveState, CompleteState, FailedState — concrete states
+ *   - BookingStateMachine (this file)            — context
+ *   - MobilityService (mvc/MobilityService.js)   — client
  */
-const { BookingStatus } = require('../models/enums');
 const ApiError = require('../models/ApiError');
+const { BookingStatus } = require('../models/enums');
 
-const TRANSITIONS = {
-  [BookingStatus.DRAFT]:    [BookingStatus.ACTIVE, BookingStatus.FAILED],
-  [BookingStatus.ACTIVE]:   [BookingStatus.COMPLETE],
-  [BookingStatus.COMPLETE]: [],
-  [BookingStatus.FAILED]:   [],
-};
+const DraftState    = require('./states/DraftState');
+const ActiveState   = require('./states/ActiveState');
+const CompleteState = require('./states/CompleteState');
+const FailedState   = require('./states/FailedState');
 
 class BookingStateMachine {
   /**
-   * Assert that moving booking from its current status to toStatus is legal.
-   * Throws ApiError 409 if the transition is not permitted.
-   * Returns toStatus on success (allows chaining).
-   *
-   * @param {{ status: string }} booking - booking document with a .status field
-   * @param {string} toStatus            - target BookingStatus value
-   * @returns {string} toStatus
+   * Build a context initialised to the booking's current status.
+   * @param {string} currentStatus — a BookingStatus enum value
    */
-  transition(booking, toStatus) {
-    const allowed = TRANSITIONS[booking.status];
-    if (allowed === undefined) {
-      throw new ApiError('INVALID_STATE', `Unknown booking status: ${booking.status}`, 409);
-    }
-    if (!allowed.includes(toStatus)) {
-      throw new ApiError(
-        'DRAFT_INVALID_STATE',
-        `Cannot transition booking from ${booking.status} to ${toStatus}.`,
-        409,
-      );
-    }
-    return toStatus;
+  constructor(currentStatus) {
+    this.state = BookingStateMachine._resolve(currentStatus);
   }
 
   /**
-   * Non-throwing guard — returns true if the transition is permitted.
-   *
-   * @param {string} currentStatus - current BookingStatus value
-   * @param {string} toStatus      - target BookingStatus value
-   * @returns {boolean}
+   * Called by concrete state classes to perform the transition.
+   * @param {BookingState} newState
    */
-  canTransition(currentStatus, toStatus) {
-    return (TRANSITIONS[currentStatus] || []).includes(toStatus);
+  setState(newState) {
+    this.state = newState;
+  }
+
+  // ── Actions — each delegates to the current state ──────────────────────────
+
+  /** Attempt to confirm the booking (DRAFT → ACTIVE). */
+  toActive() {
+    this.state.toActive(this);
+  }
+
+  /** Attempt to complete the booking (ACTIVE → COMPLETE). */
+  toComplete() {
+    this.state.toComplete(this);
+  }
+
+  /** Attempt to mark the booking as failed (DRAFT → FAILED). */
+  toFailed() {
+    this.state.toFailed(this);
+  }
+
+  // ── Private factory ─────────────────────────────────────────────────────────
+
+  static _resolve(status) {
+    switch (status) {
+      case BookingStatus.DRAFT:    return new DraftState();
+      case BookingStatus.ACTIVE:   return new ActiveState();
+      case BookingStatus.COMPLETE: return new CompleteState();
+      case BookingStatus.FAILED:   return new FailedState();
+      default:
+        throw new ApiError('INVALID_STATE', `Unknown booking status: ${status}`, 409);
+    }
   }
 }
 
-module.exports = new BookingStateMachine();
+// Export the class — callers do: new BookingStateMachine(booking.status).toActive()
+module.exports = BookingStateMachine;

@@ -1,276 +1,485 @@
 # SUMMS — Design Patterns
 
-> Documents every design pattern applied in SUMMS, showing how each one
-> fits within the MVC architecture and which GRASP principles it supports.
+> Eight GoF patterns applied in the SUMMS MVC backend.
+> Every pattern is located entirely in the **Model** layer unless noted.
 
 ---
 
-## Architecture: MVC
+## MVC Request Flow
 
-SUMMS follows the Model-View-Controller (MVC) architecture:
-
-| Layer | Responsibility | Key Files |
-|---|---|---|
-| **View** | Display data, capture user input | React pages, `api.js` |
-| **Controller** | Receive requests, coordinate Model ↔ View | `MobilityController`, `MobilityPresenter` |
-| **Model** | Business logic, entities, data access | `MobilityService`, `MobilityRequestHandler`, `MobilityDataGateway`, `MobilityDataMapper`, domain entities |
-
-Request flow:
 ```
-View → Controller → MobilityRequest → MobilityRequestHandler
-     → MobilityService → MobilityDataGateway → SUMMSDatabase
-     → MobilityResponse → MobilityPresenter → View
+View (React)
+  → MobilityController           [Controller]
+  → MobilityRequest (DTO)
+  → MobilityRequestHandler       [Invoker — Command pattern]
+  → ConcreteCommand.execute()    [Command pattern]
+  → MobilityService              [Receiver — all business logic]
+  → MobilityDataGateway          [Adapter pattern]
+  → MobilityDataMapper
+  → Firestore
+  → MobilityResponse (DTO)
+  → MobilityPresenter            [Controller]
+  → View
 ```
 
 ---
 
-## Applied Patterns Summary
+## Pattern Index
 
-| Pattern | Category | File(s) | Solves |
-|---|---|---|---|
-| Observer | GoF Behavioural | `lib/EventBus.js`, `services/AnalyticsListener.js` | Decouples analytics from business logic |
-| Factory Method | GoF Creational | `gateways/index.js` | Centralises gateway instantiation |
-| State | GoF Behavioural | `lib/BookingStateMachine.js` | Enforces booking lifecycle transitions |
-| Adapter | GoF Structural | `mvc/MobilityDataGateway.js`, `mvc/MobilityDataMapper.js` | Normalises Firestore records and external service responses into domain entities |
-| Strategy | GoF Behavioural | `gateways/payment/IPaymentGateway.js` | Swappable payment algorithm |
-| Singleton | GoF Creational | `EventBus`, `MobilityController`, `MobilityService` | Shared single resource |
-
----
-
-## 1. Observer
-
-**Files:**
-- Subject: `backend/src/lib/EventBus.js`
-- Subscriber: `backend/src/services/AnalyticsListener.js`
-- Publishers: `mvc/MobilityService.js`
-
-### Design Problem
-Analytics tracking must not be embedded inside `MobilityService`. The service handles the rental lifecycle (reservation, payment, return) and must not depend on how analytics are stored. If analytics logic changes, business logic should not be affected.
-
-### Why the Pattern Fits
-The Observer pattern defines a one-to-many dependency where subscribers are notified of events without the publisher knowing who listens. `MobilityService` emits domain events (BOOKING_CONFIRMED, PAYMENT_PROCESSED, etc.) on `EventBus`. `AnalyticsListener` subscribes and persists the events independently.
-
-### Participating Classes (within MVC)
-| MVC Layer | Role | Class / File |
-|---|---|---|
-| Model | Subject (Event Bus) | `lib/EventBus.js` |
-| Model | Publisher | `mvc/MobilityService.js` |
-| Model | Concrete Observer | `services/AnalyticsListener.js` |
-| Model | Data sink | `models/AnalyticsReport.js` |
-
-### Benefits
-- `MobilityService` emits one line per event — no knowledge of analytics storage.
-- Adding new analytics (e.g. email notification) requires only a new `EventBus.on(...)` — no changes to MobilityService.
-- Analytics failures never block a booking response (fire-and-forget `.catch(() => {})`).
-
-### Consequences if Not Used
-`MobilityService` would call `AnalyticsReport.trackEvent(...)` directly after every operation, coupling the Model's business logic to its own internal monitoring system and violating Low Coupling.
-
-### GRASP / Architecture Alignment
-- **Low Coupling**: publishers and subscribers share only an event name string.
-- **MVC alignment**: the Model notifies observers of state changes without any dependency on the View or Controller — consistent with the MVC Observer principle stated in the report.
-- **Open/Closed Principle**: open to new subscribers, closed to modification of publishers.
+| # | Pattern | Category | Files | Problem solved |
+|---|---|---|---|---|
+| 1 | Singleton | Creational | `lib/EventBus.js`, all `mvc/` classes | Shared single instances across the app |
+| 2 | Observer | Behavioural | `lib/EventBus.js`, `services/AnalyticsListener.js` | Decouple analytics tracking from business logic |
+| 3 | Factory Method | Creational | `gateways/index.js` | Centralise and swap gateway implementations |
+| 4 | Adapter | Structural | `mvc/MobilityDataGateway.js`, `mvc/MobilityDataMapper.js` | Shield service layer from Firestore document format |
+| 5 | State | Behavioural | `lib/states/BookingState.js`, `lib/BookingStateMachine.js` | Enforce booking lifecycle transitions in one place |
+| 6 | Strategy | Behavioural | `strategies/pricing/`, `services/PricingService.js` | Interchangeable pricing algorithms with runtime switching |
+| 7 | Command | Behavioural | `commands/`, `mvc/MobilityRequestHandler.js` | Encapsulate each request as an object; remove switch statement |
+| 8 | Visitor | Behavioural | `analytics/events/`, `analytics/visitors/` | Add new analytics operations without modifying event classes |
 
 ---
 
-## 2. Factory Method
+## 1. Singleton
 
-**Files:**
-- `backend/src/gateways/index.js`
-- `backend/src/gateways/payment/MockPaymentGateway.js`
-- `backend/src/gateways/transit/MockTransitGateway.js`
-- `backend/src/gateways/parking/MockParkingGateway.js`
+> Ensure a class has exactly one instance and provide a global point of access to it.
 
-### Design Problem
-`MobilityService` requires a payment gateway, a transit gateway, and a parking gateway. Calling `new MockPaymentGateway()` directly couples the service to a concrete implementation. Replacing mock gateways with real ones (Stripe, STM API) would require modifying every call site.
+**Roles in SUMMS**
 
-### Why the Pattern Fits
-Factory Method centralises object creation behind a method. The `GATEWAY_MAP` lookup table is the single variation point. Calling `createPaymentGateway()` returns whichever implementation is registered — the calling service does not know or care which one.
+| Class | Why exactly one instance |
+|---|---|
+| `lib/EventBus.js` | Shared pub/sub channel — multiple instances would silently break Observer |
+| `mvc/MobilityController.js` | Stateless HTTP coordinator — no reason to duplicate |
+| `mvc/MobilityService.js` | Stateless business logic — shared safely |
+| `mvc/MobilityRequestHandler.js` | Stateless invoker |
+| `mvc/MobilityPresenter.js` | Stateless formatter |
+| `mvc/MobilityDataGateway.js` | Stateless data accessor |
 
-### Participating Classes (within MVC)
-| MVC Layer | Role | Class / File |
-|---|---|---|
-| Model (Infrastructure) | Factory | `gateways/index.js` — `createGateway(type)` |
-| Model (Infrastructure) | Product interface | `IPaymentGateway`, `ITransitGateway`, `IParkingGateway` |
-| Model (Infrastructure) | Concrete products | `MockPaymentGateway`, `MockTransitGateway`, `MockParkingGateway` |
-| Model | Client | `mvc/MobilityService.js` |
+**How it works**
 
-### Benefits
-- Swapping mock → real gateway = one line change in `GATEWAY_MAP`.
-- `MobilityService` is programmed to interfaces, not implementations.
-- New gateway types can be added without touching any existing code.
+Node's module cache is the mechanism — `module.exports = new ClassName()` guarantees one instance per process. No `getInstance()` method is needed.
 
-### Consequences if Not Used
-`MobilityService` would directly instantiate concrete gateway classes — violating the Dependency Inversion Principle and making gateway replacement a surgical multi-file change.
+```js
+// Every mvc/ class follows this pattern
+class MobilityService { ... }
+module.exports = new MobilityService();   // singleton via module cache
+```
 
-### GRASP / Architecture Alignment
-- **Protected Variation**: the factory is the variation point for all external service creation.
-- **Dependency Inversion Principle**: Model business logic depends on abstractions (interfaces), not concrete classes.
+**SOLID / GRASP**
+- Applied only where a genuinely shared resource exists, not as a default.
+- `EventBus` as a singleton is required for **Observer** to function correctly.
 
 ---
 
-## 3. State
+## 2. Observer
 
-**Files:**
-- `backend/src/lib/BookingStateMachine.js`
-- Context: `backend/src/mvc/MobilityService.js`
+> Define a one-to-many dependency so that when one object changes state, all dependents are notified automatically.
 
-### Design Problem
-The booking lifecycle enforces a strict state machine: `DRAFT → ACTIVE → COMPLETE` and `DRAFT → FAILED`. Without a dedicated class, `MobilityService.processPayment()` and `MobilityService.returnVehicle()` would each contain their own status validation checks — duplicated, inconsistent, and easy to miss.
+**Roles in SUMMS**
 
-### Why the Pattern Fits
-The State pattern encapsulates all valid transitions in one class. `BookingStateMachine.transition(booking, toStatus)` is the single enforcement point — it throws a 409 on any illegal move before any side effect (payment charge, Firestore write) occurs.
+| Role | Class |
+|---|---|
+| Subject (event bus) | `lib/EventBus.js` |
+| Publisher | `mvc/MobilityService.js` |
+| Concrete Observer | `services/AnalyticsListener.js` |
+| Data sink | `models/AnalyticsReport.js` |
 
-### Participating Classes (within MVC)
-| MVC Layer | Role | Class / File |
-|---|---|---|
-| Model (Domain) | State machine | `lib/BookingStateMachine.js` |
-| Model | Context (client) | `mvc/MobilityService.js` |
-| Model | State identifiers | `models/enums.js` `BookingStatus` |
+**How it works**
 
-### Benefits
-- All transition rules in one place — adding a new state (e.g. `CANCELLED`) = one new entry in `TRANSITIONS`.
-- Consistent 409 response on any illegal move, regardless of which service method calls it.
-- `MobilityService` contains no scattered status if-checks.
+`MobilityService` emits typed domain events onto `EventBus` after each significant operation. `AnalyticsListener` subscribes to those events and persists them to Firestore. Neither side imports the other — they share only an event name string.
 
-### Consequences if Not Used
-`MobilityService` would have repeated `if (booking.status !== 'DRAFT') throw ...` checks duplicated across `processPayment` and `returnVehicle`, which are easy to diverge and hard to test uniformly.
+```js
+// Publisher (MobilityService)
+EventBus.emit('RESERVATION_CREATED', new ReservationCreatedEvent({ ... }));
 
-### GRASP / Architecture Alignment
-- **Pure Fabrication**: `BookingStateMachine` is not a domain entity — invented solely to manage behaviour, keeping `MobilityService` cohesive.
-- **High Cohesion**: all transition logic in one class with a single clear responsibility.
-- **Information Expert**: the state machine owns the transition rules and is the right place to enforce them.
+// Subscriber (AnalyticsListener)
+EventBus.on('RESERVATION_CREATED', (event) => {
+  event.accept(persistenceVisitor);   // Visitor pattern applied here
+});
+```
+
+Analytics failures are fire-and-forget (`.catch(() => {})`) — they never block a booking response.
+
+**SOLID / GRASP**
+- **Low Coupling**: publishers and subscribers share only an event name string — no imports between them.
+- **Open/Closed**: add a new subscriber by calling `EventBus.on(...)` — no existing code changes.
+- **MVC alignment**: the Model notifies observers of state changes with no dependency on View or Controller.
+
+---
+
+## 3. Factory Method
+
+> Define an interface for creating objects, but let subclasses (or a registry) decide which class to instantiate.
+
+**Roles in SUMMS**
+
+| Role | Class |
+|---|---|
+| Factory | `gateways/index.js` — `createPaymentGateway()`, `createTransitGateway()`, etc. |
+| Product interface | `IPaymentGateway`, `ITransitGateway`, `IParkingGateway` |
+| Concrete products | `MockPaymentGateway`, `MockTransitGateway`, `MockParkingGateway` |
+| Client | `mvc/MobilityService.js` |
+
+**How it works**
+
+`gateways/index.js` maintains a `GATEWAY_MAP` lookup table. `MobilityService` calls `createPaymentGateway()` and receives an object that satisfies `IPaymentGateway` — it never references a concrete class. Swapping mock for real (e.g. Stripe) is one line in `GATEWAY_MAP`.
+
+```js
+// gateways/index.js
+const GATEWAY_MAP = {
+  payment: MockPaymentGateway,
+  transit: MockTransitGateway,
+};
+function createPaymentGateway() { return new GATEWAY_MAP.payment(); }
+
+// MobilityService — only knows the interface
+const paymentGateway = createPaymentGateway();
+await paymentGateway.charge(amount, details);
+```
+
+**SOLID / GRASP**
+- **Protected Variation**: factory is the single variation point for all external service creation.
+- **Dependency Inversion**: `MobilityService` depends on gateway abstractions, not concrete classes.
+- **Open/Closed**: new gateway implementation = add entry to `GATEWAY_MAP`, no other changes.
 
 ---
 
 ## 4. Adapter
 
-**Files:**
-- `backend/src/mvc/MobilityDataGateway.js` (adapts Firestore model modules)
-- `backend/src/mvc/MobilityDataMapper.js` (normalises document shapes)
+> Convert the interface of a class into another interface clients expect. Lets classes work together that couldn't otherwise because of incompatible interfaces.
 
-### Design Problem
-Firestore returns raw document objects whose fields may not match the domain entity shape expected by `MobilityService`. Similarly, external transit and parking gateways return data in their own proprietary shapes. The Model layer cannot be modified every time an external format changes.
+**Roles in SUMMS**
 
-### Why the Pattern Fits
-The Adapter pattern translates an incompatible interface into the target interface without modifying either side. `MobilityDataGateway` adapts Firestore model modules into a unified data access interface. `MobilityDataMapper` translates raw Firestore documents into typed domain entities.
-
-### Participating Classes (within MVC)
-| MVC Layer | Role | Class / File |
-|---|---|---|
-| Model | Adapter | `mvc/MobilityDataGateway.js` |
-| Model | Shape translator | `mvc/MobilityDataMapper.js` |
-| Model (Infrastructure) | Adaptee | Firestore model modules (`Booking.js`, `Vehicle.js`, etc.) |
-| Model | Client | `mvc/MobilityService.js` |
-
-### Benefits
-- `MobilityService` calls `MobilityDataGateway.findBooking(id)` — it never knows about Firestore document structure.
-- If Firestore is replaced with another database, only `MobilityDataGateway` and `MobilityDataMapper` change.
-- Domain entities remain clean and independent of persistence format.
-
-### Consequences if Not Used
-`MobilityService` would call `Booking.findById(id)` and access raw Firestore fields directly, coupling the business logic layer to the database document format — any schema change would cascade throughout the Model.
-
-> **Note (post-refactor):** Before this pattern was fully enforced, `VehicleController` and `ParkingController` called Firestore models directly, bypassing the MVC chain. These violations were eliminated — `GET /api/vehicles` and `GET /api/parking/facilities/:id/spots` now route through `MobilityController → MobilityRequestHandler → MobilityService → MobilityDataGateway` like all other endpoints.
-
-### GRASP / Architecture Alignment
-- **Protected Variation**: `MobilityDataGateway` is the protected variation point for all database access.
-- **Low Coupling**: `MobilityService` has no import of any Firestore model module.
-- **Indirection**: the gateway and mapper are intermediaries that prevent direct coupling between business logic and persistence.
-
----
-
-## 5. Strategy
-
-**Files:**
-- `backend/src/gateways/payment/IPaymentGateway.js` (strategy interface)
-- `backend/src/gateways/payment/MockPaymentGateway.js` (concrete strategy)
-- `backend/src/mvc/MobilityService.js` (context)
-
-### Design Problem
-Payment processing must be swappable — the development system uses a mock gateway; production will use a real provider (e.g. Stripe). The business logic in `MobilityService.processPayment()` must not change when the payment provider changes.
-
-### Why the Pattern Fits
-The Strategy pattern defines a family of algorithms, encapsulates each, and makes them interchangeable. `MobilityService` calls `paymentGateway.charge(amount, details)` against the `IPaymentGateway` interface — it never references any concrete class.
-
-### Participating Classes (within MVC)
-| MVC Layer | Role | Class / File |
-|---|---|---|
-| Model (Infrastructure) | Strategy interface | `gateways/payment/IPaymentGateway.js` |
-| Model (Infrastructure) | Concrete strategy | `gateways/payment/MockPaymentGateway.js` |
-| Model | Context | `mvc/MobilityService.js` |
-| Model | Resolver | `gateways/index.js` `createPaymentGateway()` |
-
-### Benefits
-- Swapping mock → Stripe = one line change in `GatewayFactory`.
-- `MobilityService` contains zero payment-provider-specific code.
-- New payment strategies can be added without modifying any existing class.
-
-### Consequences if Not Used
-`MobilityService` would contain `if (env === 'production') { stripeCharge() } else { mockCharge() }` branching — violating OCP and entangling infrastructure concerns inside the Model's business logic.
-
-### GRASP / Architecture Alignment
-- **Protected Variation**: `IPaymentGateway` shields `MobilityService` from payment provider changes.
-- **Dependency Inversion Principle**: Model business logic depends on the abstraction, not the concrete class.
-
----
-
-## 6. Singleton
-
-**Files:**
-- `backend/src/lib/EventBus.js`
-- `backend/src/mvc/MobilityController.js`
-- `backend/src/mvc/MobilityService.js`
-- `backend/src/mvc/MobilityRequestHandler.js`
-- `backend/src/mvc/MobilityPresenter.js`
-- `backend/src/mvc/MobilityDataGateway.js`
-
-### Design Problem
-`EventBus` must be a single shared instance across the application — if multiple instances existed, publishers and subscribers would register on different buses and events would never reach their handlers. The MVC component classes (MobilityController, MobilityService, etc.) are stateless and have no reason to be instantiated more than once.
-
-### Why the Pattern Fits
-Singleton is appropriate only where a true single shared resource exists. `EventBus` is a shared communication channel. The MVC components hold no mutable state — sharing one instance per class is safe and efficient. Node's `module.exports = new Class()` pattern provides a natural singleton via the module cache.
-
-### Participating Classes (within MVC)
-| MVC Layer | Class |
+| Role | Class |
 |---|---|
-| Infrastructure | `lib/EventBus.js` |
-| Controller | `mvc/MobilityController.js` |
-| Model | `mvc/MobilityService.js`, `MobilityRequestHandler.js`, `MobilityPresenter.js`, `MobilityDataGateway.js` |
+| Adapter | `mvc/MobilityDataGateway.js` |
+| Shape translator | `mvc/MobilityDataMapper.js` |
+| Adaptee | Firestore model modules (`Booking.js`, `Vehicle.js`, etc.) |
+| Client | `mvc/MobilityService.js` |
 
-### Benefits
-- Guaranteed single `EventBus` — all publishers and subscribers share the same channel.
-- No unnecessary object creation for stateless MVC components.
+**How it works**
 
-### Consequences if Not Used
-Multiple `EventBus` instances would silently break the Observer pattern — events emitted by `MobilityService` would never reach `AnalyticsListener`.
+`MobilityService` calls clean domain-level methods (`findBooking(id)`, `saveBooking(data)`). `MobilityDataGateway` translates these into Firestore model calls. `MobilityDataMapper` converts raw Firestore documents into typed domain entities. The service never sees a Firestore field name.
 
-### GRASP / Architecture Alignment
-- Applied only where a shared single resource genuinely exists — not as a default for every class.
-- Node's `require()` cache makes this the natural mechanism without a complex `getInstance()` method.
+```
+MobilityService.createReservation()
+  → MobilityDataGateway.saveBooking(data)        [adapter — uniform interface]
+      → Booking.create(firestoreDoc)              [adaptee — raw Firestore]
+      → MobilityDataMapper.toBooking(doc)         [shape translator]
+  ← returns domain Booking entity
+```
+
+**SOLID / GRASP**
+- **Protected Variation**: `MobilityDataGateway` is the protected variation point for all database access — replace Firestore by rewriting only gateway + mapper.
+- **Low Coupling**: `MobilityService` imports zero Firestore model modules.
+- **Indirection**: gateway and mapper are intermediaries preventing direct coupling between business logic and persistence.
 
 ---
 
-## GRASP Principles Applied
+## 5. State
 
-| Principle | Where Applied |
+> Allow an object to alter its behaviour when its internal state changes. The object will appear to change its class.
+
+**Roles in SUMMS**
+
+| Role | Class |
 |---|---|
-| **Information Expert** | `MobilityService` owns all business logic — it has all the information to execute operations. `BookingStateMachine` owns all transition rules. |
-| **Creator** | `MobilityDataGateway.saveBooking()` creates bookings. `MobilityDataGateway.saveReceipt()` creates receipts. |
-| **Controller** | `MobilityController` is the GRASP Controller — receives system events (HTTP requests), delegates to the Model, never contains business logic. |
+| State interface | `lib/states/BookingState.js` |
+| Concrete state: DRAFT | `lib/states/DraftState.js` |
+| Concrete state: ACTIVE | `lib/states/ActiveState.js` |
+| Concrete state: COMPLETE | `lib/states/CompleteState.js` (terminal) |
+| Concrete state: FAILED | `lib/states/FailedState.js` (terminal) |
+| Context | `lib/BookingStateMachine.js` |
+| Client | `mvc/MobilityService.js` |
+
+**How it works**
+
+`BookingStateMachine` is the Context: it holds `this.state` (a `BookingState` object) and delegates every action to it via `toActive()`, `toComplete()`, and `toFailed()`. Each concrete state class overrides only the transitions it permits. Terminal states (`CompleteState`, `FailedState`) override nothing — all actions fall through to the default 409 throw in `BookingState`.
+
+`MobilityService` creates a fresh context from the booking's current DB status before each transition attempt. If the transition is illegal, the state throws a 409 before any Firestore write or payment charge occurs.
+
+```js
+// BookingState.js — state interface (default: all actions throw 409)
+class BookingState {
+  getName()          { throw new Error('must implement'); }
+  toActive(context)  { throw new ApiError('DRAFT_INVALID_STATE', `Cannot activate from ${this.getName()}`, 409); }
+  toComplete(context){ throw new ApiError('DRAFT_INVALID_STATE', `Cannot complete from ${this.getName()}`, 409); }
+  toFailed(context)  { throw new ApiError('DRAFT_INVALID_STATE', `Cannot fail from ${this.getName()}`, 409); }
+}
+
+// DraftState.js — concrete state: allows toActive and toFailed
+class DraftState extends BookingState {
+  getName() { return 'DRAFT'; }
+  toActive(context)  { context.setState(new ActiveState()); }   // DRAFT → ACTIVE ✓
+  toFailed(context)  { context.setState(new FailedState()); }   // DRAFT → FAILED ✓
+  // toComplete not overridden → throws 409
+}
+
+// ActiveState.js — concrete state: allows only toComplete
+class ActiveState extends BookingState {
+  getName() { return 'ACTIVE'; }
+  toComplete(context) { context.setState(new CompleteState()); } // ACTIVE → COMPLETE ✓
+  // toActive, toFailed not overridden → throw 409
+}
+
+// CompleteState.js — terminal: no transitions permitted
+class CompleteState extends BookingState { getName() { return 'COMPLETE'; } }
+
+// FailedState.js — terminal: no transitions permitted
+class FailedState extends BookingState { getName() { return 'FAILED'; } }
+
+// BookingStateMachine.js — context: holds state, delegates actions
+class BookingStateMachine {
+  constructor(currentStatus) {
+    this.state = BookingStateMachine._resolve(currentStatus); // DraftState / ActiveState / ...
+  }
+  setState(newState) { this.state = newState; }
+  toActive()   { this.state.toActive(this); }   // delegates to current state
+  toComplete() { this.state.toComplete(this); }
+  toFailed()   { this.state.toFailed(this); }
+}
+
+// MobilityService.js — client: one context per transition attempt
+new BookingStateMachine(booking.status).toActive();    // throws 409 if not DRAFT
+new BookingStateMachine(booking.status).toFailed();    // throws 409 if not DRAFT
+new BookingStateMachine(booking.status).toComplete();  // throws 409 if not ACTIVE
+```
+
+**SOLID / GRASP**
+- **Open/Closed**: adding a `CANCELLED` state = one new `CancelledState` class + one entry in `_resolve()`. No existing state class changes.
+- **Pure Fabrication / High Cohesion**: `BookingStateMachine` is invented solely to manage transitions — all rules are encapsulated in state classes, none leak into `MobilityService`.
+- **No conditionals in the context**: `BookingStateMachine` has zero `if/switch` logic — it only delegates.
+
+---
+
+## 6. Strategy
+
+> Define a family of algorithms, encapsulate each one, and make them interchangeable. Strategy lets the algorithm vary independently from clients that use it.
+
+**Roles in SUMMS**
+
+| Role | Class |
+|---|---|
+| Strategy interface | `strategies/pricing/IPricingStrategy.js` |
+| Concrete strategy A | `strategies/pricing/PerMinutePricingStrategy.js` |
+| Concrete strategy B | `strategies/pricing/PeakHourPricingStrategy.js` |
+| Context | `services/PricingService.js` (`PricingContext` class) |
+| Client | `mvc/MobilityService.js` |
+
+**How it works**
+
+`PricingContext` stores a strategy reference and exposes `setStrategy()` for runtime switching. All price calculation is delegated to the current strategy — the context contains no pricing logic itself. The default is `PerMinutePricingStrategy`; switching to peak-hour pricing requires one call.
+
+```js
+// IPricingStrategy — interface
+class IPricingStrategy {
+  calculatePrice(option, startTime, endTime) { throw new Error('must implement'); }
+}
+
+// PerMinutePricingStrategy — standard billing
+class PerMinutePricingStrategy extends IPricingStrategy {
+  calculatePrice(option, startTime, endTime) {
+    const minutes = Math.max(1, (new Date(endTime) - new Date(startTime)) / 60000);
+    return Math.round(option.basePrice * minutes * 100) / 100;
+  }
+}
+
+// PeakHourPricingStrategy — 1.5× surcharge 07:00–09:00 and 17:00–19:00
+class PeakHourPricingStrategy extends IPricingStrategy {
+  calculatePrice(option, startTime, endTime) {
+    const minutes = Math.max(1, (new Date(endTime) - new Date(startTime)) / 60000);
+    const hour = new Date(startTime).getHours();
+    const multiplier = (hour >= 7 && hour < 9) || (hour >= 17 && hour < 19) ? 1.5 : 1.0;
+    return Math.round(option.basePrice * minutes * multiplier * 100) / 100;
+  }
+}
+
+// PricingContext — context; delegates to strategy
+class PricingContext {
+  constructor(strategy) { this.strategy = strategy; }
+  setStrategy(strategy) { this.strategy = strategy; }             // runtime switch
+  calculatePrice(option, start, end) {
+    return this.strategy.calculatePrice(option, start, end);      // delegates
+  }
+}
+module.exports = new PricingContext(new PerMinutePricingStrategy());
+
+// MobilityService — client; unaware of which algorithm is active
+const totalPrice = PricingService.calculatePrice(option, startTime, endTime);
+
+// Switch at runtime (e.g. during peak hours):
+// PricingService.setStrategy(new PeakHourPricingStrategy());
+```
+
+**SOLID / GRASP**
+- **Protected Variation**: `IPricingStrategy` is the variation point — callers never see which algorithm runs.
+- **Open/Closed**: new pricing model = one new class; `PricingContext` never changes.
+- **Dependency Inversion**: `PricingContext` depends on the abstraction, not a concrete class.
+
+---
+
+## 7. Command
+
+> Encapsulate a request as an object, thereby letting you parameterise clients with different requests, queue or log requests, and support undoable operations.
+
+**Roles in SUMMS**
+
+| Role | Class |
+|---|---|
+| Command interface | `commands/ICommand.js` |
+| Concrete commands | `commands/booking.commands.js`, `vehicle.commands.js`, `provider.commands.js`, `parking.commands.js`, `transit.commands.js`, `analytics.commands.js` (19 command classes total) |
+| Receiver | `mvc/MobilityService.js` — injected into every command via constructor |
+| Registry | `commands/CommandRegistry.js` — maps request type string → command instance |
+| Invoker | `mvc/MobilityRequestHandler.js` — looks up and calls `execute()` |
+
+**How it works**
+
+Each request type (e.g. `CREATE_BOOKING_DRAFT`) is a separate class. The command holds a reference to `MobilityService` (the Receiver) and calls one method on it inside `execute()`. `MobilityRequestHandler` (the Invoker) looks up the command in the registry and calls `execute(request)` — it never imports `MobilityService` or knows what any command does.
+
+```js
+// ICommand — interface
+class ICommand {
+  async execute(request) { throw new Error('must implement'); }
+}
+
+// CreateBookingDraftCommand — concrete command
+class CreateBookingDraftCommand extends ICommand {
+  constructor(receiver) {           // receiver = MobilityService
+    super();
+    this.receiver = receiver;
+  }
+  async execute(request) {
+    const draft = await this.receiver.createReservation({
+      userId: request.userId, ...request.payload
+    });
+    return MobilityResponse.created(draft);
+  }
+}
+
+// CommandRegistry — maps type → command instance
+const registry = new Map([
+  ['CREATE_BOOKING_DRAFT', new CreateBookingDraftCommand(MobilityService)],
+  ['CONFIRM_BOOKING',      new ConfirmBookingCommand(MobilityService)],
+  // ... 17 more
+]);
+
+// MobilityRequestHandler — invoker (replaces 19-case switch statement)
+async handle(request) {
+  const command = registry.get(request.type);
+  if (!command) return MobilityResponse.fail(`Unknown request type: ${request.type}`, 400);
+  return command.execute(request);
+}
+```
+
+**SOLID / GRASP**
+- **Open/Closed**: new request type = one new command class + one registry entry; the invoker never changes.
+- **Single Responsibility**: each command class has exactly one responsibility.
+- **Low Coupling**: `MobilityRequestHandler` imports only `ICommand` (via the registry); it has no knowledge of `MobilityService` or any operation.
+
+---
+
+## 8. Visitor
+
+> Represent an operation to be performed on elements of an object structure. Visitor lets you define a new operation without changing the classes of the elements on which it operates.
+
+**Roles in SUMMS**
+
+| Role | Class |
+|---|---|
+| Element interface | `analytics/events/AnalyticsEvent.js` — defines `accept(visitor)` |
+| Concrete elements (8) | `ReservationCreatedEvent`, `BookingConfirmedEvent`, `PaymentProcessedEvent`, `VehicleReturnedEvent`, `ParkingReservedEvent`, `ParkingReleasedEvent`, `TransitQueryEvent`, `GatewayCallEvent` |
+| Visitor interface | `analytics/visitors/IAnalyticsVisitor.js` — declares `visit(event)` |
+| Concrete visitor A | `analytics/visitors/PersistenceVisitor.js` — persists to Firestore |
+| Concrete visitor B | `analytics/visitors/LoggingVisitor.js` — logs to stdout |
+| Client | `services/AnalyticsListener.js` |
+| Publisher | `mvc/MobilityService.js` |
+
+**How it works**
+
+Each concrete element implements `accept(visitor)`, which calls `visitor.visit(this)`. The visitor declares a single `visit(event)` method and operates on the common `AnalyticsEvent` interface (`event.type`, `event.city`, `event.metadata`) — no `instanceof` checks are needed. New operations over the entire event hierarchy are added by creating new visitor classes; no event class ever changes.
+
+```js
+// AnalyticsEvent — element interface
+class AnalyticsEvent {
+  get type()     { throw new Error('must implement'); }
+  get city()     { return null; }
+  get metadata() { return {}; }
+  accept(visitor){ throw new Error('must implement'); }
+}
+
+// ReservationCreatedEvent — concrete element
+class ReservationCreatedEvent extends AnalyticsEvent {
+  constructor({ city, vehicleType, optionId, userId }) { super(); ... }
+  get type()     { return 'RESERVATION_CREATED'; }
+  get city()     { return this._city; }
+  get metadata() { return { vehicleType: this._vehicleType, optionId: this._optionId, userId: this._userId }; }
+  accept(visitor){ visitor.visit(this); }
+  //  ↑ 1st dispatch: runtime type of event selects ReservationCreatedEvent.accept
+  //                   ↑ 2nd dispatch: routes to the concrete visitor's visit()
+}
+
+// BookingConfirmedEvent, PaymentProcessedEvent, ... — same structure, own data
+
+// IAnalyticsVisitor — visitor interface
+class IAnalyticsVisitor {
+  visit(event) { throw new Error('IAnalyticsVisitor.visit() must be implemented'); }
+}
+
+// PersistenceVisitor — concrete visitor A
+class PersistenceVisitor extends IAnalyticsVisitor {
+  visit(event) {
+    AnalyticsReport.trackEvent(event.type, event.city, event.metadata).catch(() => {});
+  }
+}
+
+// LoggingVisitor — concrete visitor B
+class LoggingVisitor extends IAnalyticsVisitor {
+  visit(event) {
+    const meta = Object.entries(event.metadata).map(([k, v]) => `${k}=${v}`).join(' ');
+    console.log(`[analytics] ${event.type} city=${event.city ?? 'n/a'} ${meta}`);
+  }
+}
+
+// AnalyticsListener — client; applies both visitors to every event
+EventBus.on('RESERVATION_CREATED', (event) => {
+  event.accept(persistenceVisitor);   // → PersistenceVisitor.visit(event)
+  event.accept(loggingVisitor);       // → LoggingVisitor.visit(event)
+});
+
+// MobilityService — emits typed event objects onto EventBus
+EventBus.emit('RESERVATION_CREATED',
+  new ReservationCreatedEvent({ city: option.city, vehicleType: option.type, optionId, userId })
+);
+```
+
+Adding a `NotificationVisitor` = one new class + two lines in `AnalyticsListener`. No event class is modified.
+
+**SOLID / GRASP**
+- **Open/Closed**: open to new visitors (new operations), closed to modification of event classes.
+- **Single Responsibility**: each visitor has one responsibility — persist, log, or notify.
+- **Low Coupling**: event classes have no knowledge of how they are processed; they only call `visitor.visit(this)`.
+
+---
+
+## GRASP Principles
+
+| Principle | Applied in SUMMS |
+|---|---|
+| **Information Expert** | `MobilityService` owns all business logic — it has all the information needed. `BookingStateMachine` owns all transition rules. |
+| **Creator** | `MobilityDataGateway` creates bookings and receipts — it has the required data. |
+| **Controller** | `MobilityController` is the GRASP Controller — receives HTTP requests, delegates to Model, contains no business logic. |
 | **Low Coupling** | `EventBus` decouples analytics from `MobilityService`. `MobilityDataGateway` decouples `MobilityService` from Firestore. |
-| **High Cohesion** | Each MVC class has one responsibility. `MobilityService` handles business logic only. `MobilityPresenter` formats output only. `MobilityDataMapper` translates shapes only. |
-| **Protected Variation** | `IPaymentGateway` shields against payment provider changes. `MobilityDataGateway` shields against database changes. |
-| **Indirection / Pure Fabrication** | `EventBus` (intermediary), `BookingStateMachine` (invented for transition management), `MobilityDataMapper` (invented for shape translation). |
+| **High Cohesion** | Each class has one responsibility: `MobilityService` (business logic), `MobilityPresenter` (output formatting), `MobilityDataMapper` (shape translation). |
+| **Protected Variation** | `IPricingStrategy` shields against pricing changes. `MobilityDataGateway` shields against database changes. `IPaymentGateway` shields against payment provider changes. |
+| **Pure Fabrication / Indirection** | `EventBus` (intermediary), `BookingStateMachine` (invented for transition management), `MobilityDataMapper` (invented for shape translation). |
 
 ---
 
-## SOLID Principles Compliance
+## SOLID Principles
 
-| Principle | How it is upheld |
+| Principle | Applied in SUMMS |
 |---|---|
-| **Single Responsibility** | `MobilityController`: HTTP orchestration only. `MobilityService`: business logic only. `MobilityDataGateway`: data access only. `MobilityPresenter`: output formatting only. |
-| **Open/Closed** | New gateway type → add to `GATEWAY_MAP`. New analytics event → add `EventBus.on(...)`. No existing code modified. |
-| **Liskov Substitution** | `MockPaymentGateway` fully satisfies `IPaymentGateway`. `MobilityService` works identically with any payment implementation. |
-| **Interface Segregation** | Gateway interfaces are narrow (2 methods each). `IPaymentGateway`: `charge`, `refund`. `ITransitGateway`: `getSchedule`, `getNearbyStops`. |
-| **Dependency Inversion** | `MobilityService` depends on `IPaymentGateway` (abstraction). `MobilityDataGateway` abstracts all Firestore access from the service layer. |
+| **Single Responsibility** | `MobilityController`: HTTP only. `MobilityService`: business logic only. `MobilityDataGateway`: data access only. `MobilityPresenter`: output formatting only. Each command class: one operation only. |
+| **Open/Closed** | New gateway → add to `GATEWAY_MAP`. New command → add class + registry entry. New analytics operation → add one visitor class. No existing code modified in any case. |
+| **Liskov Substitution** | `MockPaymentGateway` fully satisfies `IPaymentGateway`. `PeakHourPricingStrategy` fully satisfies `IPricingStrategy`. Any concrete visitor fully satisfies `IAnalyticsVisitor`. |
+| **Interface Segregation** | All interfaces are narrow: `IPaymentGateway` (2 methods), `ITransitGateway` (2 methods), `IPricingStrategy` (1 method), `ICommand` (1 method). |
+| **Dependency Inversion** | `MobilityService` depends on gateway abstractions. `PricingContext` depends on `IPricingStrategy`. `MobilityRequestHandler` depends on `ICommand`. |

@@ -6,6 +6,7 @@ const {
   parkingQuerySchema,
   reserveSpotSchema,
   releaseSpotSchema,
+  nearbyParkingQuerySchema,
 } = require('../middleware/validation');
 
 const router = Router();
@@ -28,6 +29,10 @@ router.post('/parking/spots/reserve', validateBody(reserveSpotSchema), (req, res
 
 router.post('/parking/spots/release', validateBody(releaseSpotSchema), (req, res, next) =>
   mobilityController.releaseParkingSpot(req, res, next)
+);
+
+router.get('/parking/nearby', validateQuery(nearbyParkingQuerySchema), (req, res, next) =>
+  mobilityController.getNearbyParkings(req, res, next)
 );
 
 module.exports = router;

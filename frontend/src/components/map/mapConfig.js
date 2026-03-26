@@ -1,47 +1,66 @@
-import { Bike, Car, Navigation, ParkingSquare } from 'lucide-react';
+import { Bike, Bus, Car, Navigation, ParkingSquare, TrainFront } from 'lucide-react';
 
 export const MONTREAL = { lat: 45.5017, lng: -73.5673 };
 
 export const MAP_THEME = [
-  { elementType: 'geometry', stylers: [{ color: '#eef2ff' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#334155' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#ffffff' }] },
-  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#cbd5e1' }] },
+  { elementType: 'geometry', stylers: [{ color: '#1a1d27' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1d27' }] },
+  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#2a2d3d' }] },
   { featureType: 'administrative.land_parcel', stylers: [{ visibility: 'off' }] },
-  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#dbeafe' }] },
+  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#1e2330' }] },
   { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
-  { featureType: 'poi.park', elementType: 'geometry.fill', stylers: [{ color: '#dcfce7' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#dbe4f0' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#c7d2fe' }] },
-  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#a5b4fc' }] },
-  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#bfe5fe' }] },
+  { featureType: 'poi.park', elementType: 'geometry.fill', stylers: [{ color: '#24312c' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#252836' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#202434' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#2d3145' }] },
+  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#3a3f57' }] },
+  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#2b313b' }] },
+  { featureType: 'transit.station', elementType: 'labels.text.fill', stylers: [{ color: '#d1d5db' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0d1520' }] },
 ];
 
 export const TYPE_META = {
   BIKE_SHARING: {
     label: 'Bike',
     icon: Bike,
-    markerColor: '#2563eb',
-    badgeClass: 'bg-blue-100 text-blue-700 border-blue-200',
+    markerColor: '#d1d5db',
+    badgeClass: 'bg-gray-100 text-gray-700 border-gray-300',
   },
   SCOOTER_SHARING: {
     label: 'Scooter',
     icon: Navigation,
-    markerColor: '#10b981',
-    badgeClass: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    markerColor: '#9ca3af',
+    badgeClass: 'bg-gray-100 text-gray-700 border-gray-300',
   },
   CAR_SHARING: {
     label: 'Car',
     icon: Car,
-    markerColor: '#111827',
-    badgeClass: 'bg-slate-200 text-slate-700 border-slate-300',
+    markerColor: '#4b5563',
+    badgeClass: 'bg-gray-100 text-gray-700 border-gray-300',
   },
   PARKING: {
     label: 'Parking',
     icon: ParkingSquare,
-    markerColor: '#f59e0b',
-    badgeClass: 'bg-amber-100 text-amber-700 border-amber-200',
+    markerColor: '#6b7280',
+    badgeClass: 'bg-gray-100 text-gray-700 border-gray-300',
+  },
+  TRANSIT_BUS: {
+    label: 'Transit Bus',
+    icon: Bus,
+    markerColor: '#9ca3af',
+    badgeClass: 'bg-gray-100 text-gray-700 border-gray-300',
+  },
+  TRANSIT_METRO: {
+    label: 'Transit Metro',
+    icon: TrainFront,
+    markerColor: '#6b7280',
+    badgeClass: 'bg-gray-100 text-gray-700 border-gray-300',
+  },
+  TRANSIT_STATION: {
+    label: 'Transit',
+    icon: TrainFront,
+    markerColor: '#d1d5db',
+    badgeClass: 'bg-gray-100 text-gray-700 border-gray-300',
   },
 };

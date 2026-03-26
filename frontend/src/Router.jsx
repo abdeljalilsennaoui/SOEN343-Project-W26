@@ -21,6 +21,28 @@ function PageLayout({ children }) {
   return <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>;
 }
 
+function ProtectedAppRoutes() {
+  return (
+    <div className="min-h-screen bg-gray-50 text-slate-900">
+      <Navbar />
+      <Routes>
+        <Route path="/map" element={<MapPage />} />
+        <Route path="/old-map" element={<OldMapPage />} />
+        <Route path="/book" element={<BookingFlow />} />
+        <Route path="/" element={<PageLayout><Home /></PageLayout>} />
+        <Route path="/vehicles" element={<PageLayout><VehicleList /></PageLayout>} />
+        <Route path="/reserve/:vehicleId" element={<PageLayout><ReservationForm /></PageLayout>} />
+        <Route path="/reservations/:reservationId" element={<PageLayout><ReservationStatus /></PageLayout>} />
+        <Route path="/analytics" element={<PageLayout><Analytics /></PageLayout>} />
+        <Route path="/parking" element={<PageLayout><ParkingPage /></PageLayout>} />
+        <Route path="/transit" element={<PageLayout><TransitPage /></PageLayout>} />
+        <Route path="/provider" element={<PageLayout><ProviderDashboard /></PageLayout>} />
+        <Route path="/bookings" element={<PageLayout><MyBookings /></PageLayout>} />
+      </Routes>
+    </div>
+  );
+}
+
 export default function Router() {
   return (
     <Routes>
@@ -32,23 +54,7 @@ export default function Router() {
         path="/*"
         element={
           <ProtectedRoute>
-            <div className="min-h-screen bg-gray-50">
-              <Navbar />
-              <Routes>
-                <Route path="/map" element={<MapPage />} />
-                <Route path="/old-map" element={<OldMapPage />} />
-                <Route path="/book" element={<BookingFlow />} />
-                <Route path="/" element={<PageLayout><Home /></PageLayout>} />
-                <Route path="/vehicles" element={<PageLayout><VehicleList /></PageLayout>} />
-                <Route path="/reserve/:vehicleId" element={<PageLayout><ReservationForm /></PageLayout>} />
-                <Route path="/reservations/:reservationId" element={<PageLayout><ReservationStatus /></PageLayout>} />
-                <Route path="/analytics" element={<PageLayout><Analytics /></PageLayout>} />
-                <Route path="/parking" element={<PageLayout><ParkingPage /></PageLayout>} />
-                <Route path="/transit" element={<PageLayout><TransitPage /></PageLayout>} />
-                <Route path="/provider" element={<PageLayout><ProviderDashboard /></PageLayout>} />
-                <Route path="/bookings" element={<PageLayout><MyBookings /></PageLayout>} />
-              </Routes>
-            </div>
+            <ProtectedAppRoutes />
           </ProtectedRoute>
         }
       />

@@ -27,6 +27,7 @@ const {
   GetAvailableSpotsCommand,
   ReserveParkingSpotCommand,
   ReleaseParkingSpotCommand,
+  GetNearbyParkingsCommand,
 } = require('./parking.commands');
 const { GetTransitScheduleCommand, GetNearbyStopsCommand } = require('./transit.commands');
 const { GetRentalAnalyticsCommand, GetGatewayAnalyticsCommand } = require('./analytics.commands');
@@ -62,6 +63,7 @@ const registry = new Map([
   // Analytics
   ['GET_RENTAL_ANALYTICS',    new GetRentalAnalyticsCommand(MobilityService)],
   ['GET_GATEWAY_ANALYTICS',   new GetGatewayAnalyticsCommand(MobilityService)],
+  ['GET_NEARBY_PARKINGS',     new GetNearbyParkingsCommand(MobilityService)],
 ]);
 
 module.exports = registry;

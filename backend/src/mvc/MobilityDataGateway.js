@@ -38,6 +38,11 @@ class MobilityDataGateway {
     return docs.map(MobilityDataMapper.toBooking);
   }
 
+  async findActiveAndDraftBookings() {
+    const docs = await Booking.findActiveAndDraft();
+    return docs.map(MobilityDataMapper.toBooking);
+  }
+
   async saveBooking(data) {
     return Booking.create(data);
   }

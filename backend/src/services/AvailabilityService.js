@@ -1,5 +1,4 @@
-const Booking = require('../models/Booking');
-const { BookingStatus } = require('../models/enums');
+const MobilityDataGateway = require('../mvc/MobilityDataGateway');
 
 /**
  * Check how many slots are available for an option in a time window.
@@ -25,7 +24,7 @@ async function checkAvailability(option, startTime, endTime, excludeBookingId) {
   }
 
   // Count existing bookings that conflict (only reads DRAFT+ACTIVE, not completed/failed)
-  const allBookings = await Booking.findActiveAndDraft();
+  const allBookings = await MobilityDataGateway.findActiveAndDraftBookings();
   const conflicting = allBookings.filter((b) => {
     if (b.optionId !== option.id) return false;
     if (excludeBookingId && b.id === excludeBookingId) return false;
@@ -55,7 +54,7 @@ async function checkAvailabilityBatch(options, startTime, endTime) {
   const reqEnd = new Date(endTime).getTime();
 
   // Single Firestore read for only DRAFT+ACTIVE bookings
-  const activeBookings = await Booking.findActiveAndDraft();
+  const activeBookings = await MobilityDataGateway.findActiveAndDraftBookings();
 
   const results = new Map();
 

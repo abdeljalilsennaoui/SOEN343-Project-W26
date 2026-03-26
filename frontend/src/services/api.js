@@ -1,3 +1,4 @@
+import { DEFAULT_PARKING_RADIUS_METERS } from '@/utils/constants';
 import { auth } from '../lib/firebase';
 
 const BASE_URL = '/api';
@@ -151,6 +152,23 @@ export function releaseParkingSpot(spotId) {
     method: 'POST',
     body: JSON.stringify({ spotId }),
   });
+}
+
+export async function searchNearbyParkings(center, radiusMeters = DEFAULT_PARKING_RADIUS_METERS, maxResults = 120) {
+  const params = new URLSearchParams({
+    lat: center.lat,
+    lng: center.lng,
+    radius: radiusMeters,
+    maxResults,
+  });
+
+  const response = await request(`/parking/nearby?${params}`);
+  const spots = response.data || [];
+
+  return spots.map(spot => ({
+    ...spot,
+    type: 'PARKING'
+  }));
 }
 
 // ── Transit ───────────────────────────────────────────────────────────────────

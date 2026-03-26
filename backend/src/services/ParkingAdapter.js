@@ -9,6 +9,7 @@
  * Target:   { getAvailableSpots, reserveSpot } with normalized domain shapes
  * Client:   TransitController (external spots), ParkingController can optionally use it
  */
+const GatewayCallEvent = require('../analytics/events/GatewayCallEvent');
 const { createParkingGateway } = require('../gateways');
 const EventBus = require('../lib/EventBus');
 
@@ -19,16 +20,22 @@ const gateway = createParkingGateway();
  * @param {string} city
  * @returns {Array<{ id, facilityName, pricePerHour, status }>}
  */
-async function getAvailableSpots(city) {
-  EventBus.emit('GATEWAY_CALL', { metadata: { service: 'parking', operation: 'getAvailableSpots', success: true } });
+async function getNearbySpots(center, radiusMeters, maxResults) {
+  EventBus.emit('GATEWAY_CALL', new GatewayCallEvent({
+    service: 'parking', operation: 'getNearbySpots', success: true,
+  }));
 
-  const raw = await gateway.getAvailableSpots(city);
+  const raw = await gateway.getAvailableSpots(center, radiusMeters, maxResults);
 
   return raw.map((spot) => ({
     id: spot.id,
     facilityName: spot.facilityName,
     pricePerHour: spot.pricePerHour,
     status: spot.status,
+    lat: spot.lat,
+    lng: spot.lng,
+    distanceMeters: spot.distanceMeters,
+    notes: spot.notes,
   }));
 }
 
@@ -38,7 +45,9 @@ async function getAvailableSpots(city) {
  * @returns {{ spotId, success, message }}
  */
 async function reserveSpot(spotId) {
-  EventBus.emit('GATEWAY_CALL', { metadata: { service: 'parking', operation: 'reserveSpot', success: true } });
+  EventBus.emit('GATEWAY_CALL', new GatewayCallEvent({
+    service: 'parking', operation: 'reserveSpot', success: true,
+  }));
 
   const result = await gateway.reserveSpot(spotId);
 
@@ -49,4 +58,4 @@ async function reserveSpot(spotId) {
   };
 }
 
-module.exports = { getAvailableSpots, reserveSpot };
+module.exports = { getNearbySpots, reserveSpot };

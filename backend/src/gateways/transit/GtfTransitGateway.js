@@ -40,7 +40,7 @@ class GtfsTransitGateway extends ITransitGateway {
     this.routesById = new Map();
     this.stopsById = new Map();
     this.arrivalsByRoute = new Map();
-    this.tripsById       = new Map();
+    this.tripsById = new Map();
     this.stopTimesByTrip = new Map();
     this.ready = false;
     this._load();
@@ -120,7 +120,7 @@ class GtfsTransitGateway extends ITransitGateway {
           stop_sequence: parseInt(st.stop_sequence, 10),
         });
       }
-    
+
       for (const stops of this.stopTimesByTrip.values()) {
         stops.sort((a, b) => a.stop_sequence - b.stop_sequence);
       }
@@ -148,7 +148,7 @@ class GtfsTransitGateway extends ITransitGateway {
         continue;
 
       const stopTimes = this.stopTimesByTrip.get(trip.trip_id) ?? [];
-  
+
       if (!stopTimes.length)
         continue;
 

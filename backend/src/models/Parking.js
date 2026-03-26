@@ -7,10 +7,10 @@ const facilitiesCol = db.collection('parkingFacilities');
 const spotsCol = db.collection('parkingSpots');
 
 async function findAllFacilities(city) {
-  const snap = await facilitiesCol.get();
-  let results = snap.docs.map((d) => d.data());
-  if (city) results = results.filter((f) => f.city.toLowerCase() === city.toLowerCase());
-  return results;
+  let query = facilitiesCol;
+  if (city) query = query.where('city', '==', city);
+  const snap = await query.get();
+  return snap.docs.map((d) => d.data());
 }
 
 async function findFacilityById(id) {

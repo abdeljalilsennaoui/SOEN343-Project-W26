@@ -57,6 +57,7 @@ class MobilityDataMapper {
       city: doc.city,
       type: doc.type,
       basePrice: doc.basePrice,
+      capacity: doc.capacity ?? 1,
       description: doc.description || '',
       blockedPeriods: doc.blockedPeriods || [],
     };

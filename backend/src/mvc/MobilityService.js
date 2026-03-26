@@ -54,13 +54,23 @@ class MobilityService {
   async searchVehicles({ city, type, maxPrice, startTime, endTime }) {
     const options = await MobilityDataGateway.findMobilityOptions({ city, type });
 
-    const results = await Promise.all(
-      options.map(async (option) => {
-        const availability = await AvailabilityService.isAvailable(option, startTime, endTime);
-        const estimatedPrice = PricingService.calculatePrice(option, startTime, endTime);
-        return { optionId: option.id, type: option.type, city: option.city, availability, estimatedPrice, shortDescription: option.description };
-      })
-    );
+    // Single Firestore read for all bookings instead of N reads (one per option)
+    const availMap = await AvailabilityService.checkAvailabilityBatch(options, startTime, endTime);
+
+    const results = options.map((option) => {
+      const avail = availMap.get(option.id) || { available: false, remaining: 0, capacity: 1, conflicting: 0 };
+      const estimatedPrice = PricingService.calculatePrice(option, startTime, endTime);
+      return {
+        optionId: option.id,
+        type: option.type,
+        city: option.city,
+        availability: avail.available,
+        remaining: avail.remaining,
+        capacity: avail.capacity,
+        estimatedPrice,
+        shortDescription: option.description,
+      };
+    });
 
     const filtered = maxPrice !== undefined ? results.filter((r) => r.estimatedPrice <= maxPrice) : results;
     filtered.sort((a, b) => (a.availability !== b.availability ? (a.availability ? -1 : 1) : a.estimatedPrice - b.estimatedPrice));
@@ -74,8 +84,9 @@ class MobilityService {
     const option = await MobilityDataGateway.findMobilityOption(optionId);
     if (!option) throw new ApiError('OPTION_NOT_FOUND', `Mobility option ${optionId} not found`, 404);
 
-    if (!(await AvailabilityService.isAvailable(option, startTime, endTime))) {
-      throw new ApiError('BOOKING_NOT_AVAILABLE', 'Selected option is not available for the requested time window.', 409);
+    const avail = await AvailabilityService.checkAvailability(option, startTime, endTime);
+    if (!avail.available) {
+      throw new ApiError('BOOKING_NOT_AVAILABLE', `No units available (${avail.conflicting}/${avail.capacity} booked for this time window).`, 409);
     }
 
     const totalPrice = PricingService.calculatePrice(option, startTime, endTime);

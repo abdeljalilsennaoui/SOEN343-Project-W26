@@ -140,6 +140,11 @@ async function seedMobilityOptions() {
     [TripMode.SCOOTER_SHARING]: 'Electric scooter — fast and convenient',
     [TripMode.CAR_SHARING]: 'Compact car — great for longer distances',
   };
+  const capacities = {
+    [TripMode.BIKE_SHARING]: 8,
+    [TripMode.SCOOTER_SHARING]: 6,
+    [TripMode.CAR_SHARING]: 3,
+  };
 
   const batch = db.batch();
   let count = 0;
@@ -153,6 +158,7 @@ async function seedMobilityOptions() {
           type,
           city,
           basePrice: prices[type],
+          capacity: capacities[type],
           description: `${descriptions[type]} in ${city} (#${i + 1})`,
           blockedPeriods: [],
         });

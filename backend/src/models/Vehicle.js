@@ -5,12 +5,12 @@ const db = require('../lib/firestore');
 const col = db.collection('vehicles');
 
 async function findAll(filters = {}) {
-  const snap = await col.get();
-  let results = snap.docs.map((d) => d.data());
-  if (filters.city) results = results.filter((v) => v.city.toLowerCase() === filters.city.toLowerCase());
-  if (filters.type) results = results.filter((v) => v.type === filters.type);
-  if (filters.status) results = results.filter((v) => v.status === filters.status);
-  return results;
+  let query = col;
+  if (filters.city) query = query.where('city', '==', filters.city);
+  if (filters.type) query = query.where('type', '==', filters.type);
+  if (filters.status) query = query.where('status', '==', filters.status);
+  const snap = await query.get();
+  return snap.docs.map((d) => d.data());
 }
 
 async function findById(id) {

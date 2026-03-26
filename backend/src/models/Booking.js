@@ -38,6 +38,14 @@ async function findAll() {
   return snap.docs.map((d) => d.data());
 }
 
+async function findActiveAndDraft() {
+  const [draftSnap, activeSnap] = await Promise.all([
+    col.where('status', '==', 'DRAFT').get(),
+    col.where('status', '==', 'ACTIVE').get(),
+  ]);
+  return [...draftSnap.docs, ...activeSnap.docs].map((d) => d.data());
+}
+
 async function update(id, updates) {
   const booking = await findById(id);
   if (!booking) return null;
@@ -51,5 +59,6 @@ module.exports = {
   findById,
   findByUserId,
   findAll,
+  findActiveAndDraft,
   update,
 };

@@ -28,7 +28,7 @@ View (React)
 
 | # | Pattern | Category | Files | Problem solved |
 |---|---|---|---|---|
-| 1 | Singleton | Creational | `lib/EventBus.js`, all `mvc/` classes | Shared single instances across the app |
+| 1 | Singleton | Creational | `lib/EventBus.js`, `mvc/MobilityController.js`, `mvc/MobilityService.js`, `mvc/MobilityRequestHandler.js`, `mvc/MobilityPresenter.js`, `mvc/MobilityDataGateway.js` | Shared single instances across the app (DTOs and Mapper are not singletons) |
 | 2 | Observer | Behavioural | `lib/EventBus.js`, `services/AnalyticsListener.js` | Decouple analytics tracking from business logic |
 | 3 | Factory Method | Creational | `gateways/index.js` | Centralise and swap gateway implementations |
 | 4 | Adapter | Structural | `mvc/MobilityDataGateway.js`, `mvc/MobilityDataMapper.js` | Shield service layer from Firestore document format |
@@ -54,14 +54,26 @@ View (React)
 | `mvc/MobilityPresenter.js` | Stateless formatter |
 | `mvc/MobilityDataGateway.js` | Stateless data accessor |
 
+**Not singletons** (also in `mvc/` but intentionally exported differently)
+
+| Class | Export style | Why |
+|---|---|---|
+| `mvc/MobilityRequest.js` | `module.exports = MobilityRequest` (class) | DTO — a new instance is created per incoming request |
+| `mvc/MobilityResponse.js` | `module.exports = MobilityResponse` (class) | DTO — a new instance is created per outgoing response (via static factories `ok()`, `fail()`) |
+| `mvc/MobilityDataMapper.js` | `module.exports = MobilityDataMapper` (class) | All methods are static — no instance needed |
+
 **How it works**
 
 Node's module cache is the mechanism — `module.exports = new ClassName()` guarantees one instance per process. No `getInstance()` method is needed.
 
 ```js
-// Every mvc/ class follows this pattern
+// Singleton mvc/ classes (stateless coordinators)
 class MobilityService { ... }
 module.exports = new MobilityService();   // singleton via module cache
+
+// Non-singleton mvc/ classes (DTOs, static utilities)
+class MobilityRequest { ... }
+module.exports = MobilityRequest;          // callers instantiate per use
 ```
 
 **SOLID / GRASP**

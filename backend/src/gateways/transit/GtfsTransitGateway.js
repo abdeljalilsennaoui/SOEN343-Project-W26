@@ -18,14 +18,34 @@ function downloadBuffer(url) {
   });
 }
 
+function parseCsvLine(line) {
+  const fields = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { current += ch; }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { fields.push(current.trim()); current = ''; }
+      else { current += ch; }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
 function parseCsv(text) {
   const lines = text.trim().split('\n');
-  const headers = lines[0].replace(/\r/g, '').split(',');
+  const headers = parseCsvLine(lines[0].replace(/\r/g, ''));
   return lines.slice(1)
     .filter(Boolean)
     .map((line) => {
-      const values = line.replace(/\r/g, '').split(',');
-      return Object.fromEntries(headers.map((h, i) => [h.trim(), (values[i] ?? '').trim()]));
+      const values = parseCsvLine(line.replace(/\r/g, ''));
+      return Object.fromEntries(headers.map((h, i) => [h, (values[i] ?? '')]));
     });
 }
 
@@ -127,11 +147,21 @@ class GtfsTransitGateway extends ITransitGateway {
 
       this.ready = true;
     } catch (err) {
-      //
+      console.error('[GtfsTransitGateway] Failed to load GTFS data:', err.message);
     }
   }
 
+  async _waitForLoad(timeoutMs = 60000) {
+    if (this.ready) return;
+    const start = Date.now();
+    while (!this.ready && Date.now() - start < timeoutMs) {
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    if (!this.ready) throw new Error('GTFS data not available — download may have failed');
+  }
+
   async getSchedule(city, line = null) {
+    await this._waitForLoad();
 
     const route = [...this.routesById.values()].find(
       (r) =>
@@ -187,8 +217,34 @@ class GtfsTransitGateway extends ITransitGateway {
   }
 
 
-  async getNearbyStops(_latitude, _longitude, _radiusKm = 0.5) {
-    //
+  async getNearbyStops(latitude, longitude, radiusKm = 0.5) {
+    await this._waitForLoad();
+
+    const radiusMeters = radiusKm * 1000;
+    const toRad = (d) => (d * Math.PI) / 180;
+    const R = 6371000;
+
+    const results = [];
+    for (const stop of this.stopsById.values()) {
+      const dLat = toRad(stop.stop_lat - latitude);
+      const dLng = toRad(stop.stop_lon - longitude);
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(latitude)) * Math.cos(toRad(stop.stop_lat)) * Math.sin(dLng / 2) ** 2;
+      const distance = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      if (distance <= radiusMeters) {
+        results.push({
+          id: stop.stop_id,
+          name: stop.stop_name,
+          distance: Math.round(distance) / 1000,
+          latitude: stop.stop_lat,
+          longitude: stop.stop_lon,
+        });
+      }
+    }
+
+    results.sort((a, b) => a.distance - b.distance);
+    return results.slice(0, 50);
   }
 }
 

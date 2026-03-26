@@ -15,7 +15,7 @@ const MockMapsGateway = require('./maps/MockMapsGateway');
 const MockParkingGateway = require('./parking/MockParkingGateway');
 const MockTransitGateway = require('./transit/MockTransitGateway');
 const OverpassParkingGateway = require('./parking/OverpassParkingGateway');
-const TransitGateway = require('./transit/GtfTransitGateway');
+const TransitGateway = require('./transit/GtfsTransitGateway');
 
 const GATEWAY_MAP = {
   payment: () => new MockPaymentGateway(),

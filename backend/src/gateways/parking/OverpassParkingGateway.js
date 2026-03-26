@@ -59,6 +59,7 @@ class OverpassParkingGateway extends IParkingGateway {
           notes: [fee, capacity].filter(Boolean).join(' · ') || 'Public parking nearby',
         };
       })
+      .filter(Boolean)
       .slice(0, Math.max(1, maxResults));
   }
 

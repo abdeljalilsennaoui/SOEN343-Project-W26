@@ -47,7 +47,7 @@ async function releaseVehicle(id) {
   return updateStatus(id, VehicleStatus.AVAILABLE);
 }
 
-async function create({ city, type, pricePerMin, providerId, description = '' }) {
+async function create({ city, type, pricePerMin, providerId, lat, lng, description = '' }) {
   const { v4: uuidv4 } = require('uuid');
   const id = uuidv4();
   const vehicle = {
@@ -56,6 +56,8 @@ async function create({ city, type, pricePerMin, providerId, description = '' })
     type,
     pricePerMin,
     providerId,
+    lat,
+    lng,
     description,
     status: VehicleStatus.AVAILABLE,
     createdAt: new Date().toISOString(),
@@ -67,7 +69,7 @@ async function create({ city, type, pricePerMin, providerId, description = '' })
 async function update(id, fields) {
   const vehicle = await findById(id);
   if (!vehicle) return null;
-  const allowed = ['city', 'type', 'pricePerMin', 'description', 'status'];
+  const allowed = ['city', 'type', 'pricePerMin', 'lat', 'lng', 'description', 'status'];
   const patch = {};
   for (const key of allowed) {
     if (fields[key] !== undefined) patch[key] = fields[key];

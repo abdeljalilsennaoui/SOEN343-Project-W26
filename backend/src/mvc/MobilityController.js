@@ -71,7 +71,7 @@ class MobilityController {
   // ── Provider Vehicle Management ───────────────────────────────────────────
 
   async getProviderVehicles(req, res, next) {
-    await this._dispatch(MobilityRequest.TYPES.GET_PROVIDER_VEHICLES, req.uid, {}, res, next);
+    await this._dispatch(MobilityRequest.TYPES.GET_PROVIDER_VEHICLES, req.uid, { role: req.role }, res, next);
   }
 
   async addVehicle(req, res, next) {
@@ -120,6 +120,15 @@ class MobilityController {
   async releaseParkingSpot(req, res, next) {
     await this._dispatch(MobilityRequest.TYPES.RELEASE_PARKING_SPOT, req.uid, {
       spotId: req.body.spotId,
+    }, res, next);
+  }
+
+  async getNearbyParkings(req, res, next) {
+    await this._dispatch(MobilityRequest.TYPES.GET_NEARBY_PARKINGS, req.uid, {
+      lat: Number(req.query.lat),
+      lng: Number(req.query.lng),
+      radius: Number(req.query.radius),
+      maxResults: Number(req.query.maxResults),
     }, res, next);
   }
 

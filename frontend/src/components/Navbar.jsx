@@ -10,10 +10,11 @@ const navItems = [
   { to: '/bookings', label: 'My Bookings' },
   { to: '/map', label: 'Map' },
   { to: '/old-map', label: 'Old Map' },
-  { to: '/analytics', label: 'Analytics' },
   { to: '/parking', label: 'Parking' },
   { to: '/transit', label: 'Transit' },
 ];
+
+const ANALYTICS_ROLES = ['MOBILITY_PROVIDER', 'CITY_ADMINISTRATOR', 'SYSTEM_ADMINISTRATOR'];
 
 const ROLE_LABELS = {
   COMMUTER: 'Commuter',
@@ -23,10 +24,10 @@ const ROLE_LABELS = {
 };
 
 const ROLE_STYLES = {
-  COMMUTER: 'bg-blue-100 text-blue-700',
-  MOBILITY_PROVIDER: 'bg-amber-100 text-amber-700',
-  CITY_ADMINISTRATOR: 'bg-purple-100 text-purple-700',
-  SYSTEM_ADMINISTRATOR: 'bg-red-100 text-red-700',
+  COMMUTER: 'bg-blue-500/20 text-blue-300',
+  MOBILITY_PROVIDER: 'bg-amber-500/20 text-amber-300',
+  CITY_ADMINISTRATOR: 'bg-purple-500/20 text-purple-300',
+  SYSTEM_ADMINISTRATOR: 'bg-red-500/20 text-red-300',
 };
 
 function Navbar() {
@@ -46,7 +47,7 @@ function Navbar() {
     }`;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/15 bg-slate-950/90 px-4 py-3 text-white backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-[#1e2330] bg-[#13161d]/90 px-4 py-3 text-white backdrop-blur-xl">
       <nav className="flex items-center justify-between">
         <Link to="/" className="text-xl font-semibold">
           CityFlow
@@ -59,6 +60,13 @@ function Navbar() {
               </NavLink>
             </li>
           ))}
+          {ANALYTICS_ROLES.includes(userRole) && (
+            <li>
+              <NavLink to="/analytics" className={getNavClassName}>
+                Analytics
+              </NavLink>
+            </li>
+          )}
           {isProvider && (
             <li>
               <NavLink to="/provider" className={getNavClassName}>
@@ -85,14 +93,14 @@ function Navbar() {
           </button>
           <button
             onClick={logout}
-            className="hidden md:inline rounded-md border border-white/20 px-3 py-1 text-xs"
+            className="hidden md:inline rounded-md border border-gray-500 px-3 py-1.5 text-xs text-gray-300 transition-colors hover:border-gray-400 hover:text-white"
           >
             Sign out
           </button>
         </div>
       </nav>
       {isOpen && (
-        <div className="mt-3 md:hidden rounded-md border border-white/10 bg-slate-900 p-3 space-y-2">
+        <div className="mt-3 md:hidden rounded-md border border-[#1e2330] bg-[#0d0f14] p-3 space-y-2">
 
           {navItems.map((item) => (
             <NavLink
@@ -105,6 +113,15 @@ function Navbar() {
             </NavLink>
           ))}
 
+          {ANALYTICS_ROLES.includes(userRole) && (
+            <NavLink
+              to="/analytics"
+              className={getNavClassName}
+              onClick={() => setIsOpen(false)}
+            >
+              Analytics
+            </NavLink>
+          )}
           {isProvider && (
             <NavLink
               to="/provider"
@@ -114,7 +131,7 @@ function Navbar() {
               Provider
             </NavLink>
           )}
-          <div className="pt-3 border-t border-white/10 text-sm text-slate-300">
+          <div className="pt-3 border-t border-[#1e2330] text-sm text-gray-300">
             {currentUser?.displayName || currentUser?.email}
           </div>
           {userRole && (
@@ -128,7 +145,7 @@ function Navbar() {
           )}
           <button
             onClick={logout}
-            className="w-full mt-3 rounded-md border border-white/20 px-3 py-2 text-sm"
+            className="w-full mt-3 rounded-md border border-gray-500 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-400 hover:text-white"
           >
             Sign out
           </button>

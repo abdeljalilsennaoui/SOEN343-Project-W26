@@ -1,8 +1,42 @@
 import { useState } from 'react';
-import { getTransitSchedule, getNearbyStops } from '../services/api';
+import { getTransitSchedule } from '../services/api';
 
-const CITIES = ['Montreal', 'Toronto', 'Vancouver'];
+const CITIES = ['Montreal'];
 const TYPE_ICONS = { BUS: '🚌', METRO: '🚇', TRAM: '🚋' };
+
+function TripRow({ trip }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="border border-[#1e2330] rounded-lg bg-[#13161d] overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center justify-between px-3 py-2.5 text-left transition-colors hover:bg-white/5"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-mono font-bold text-gray-300 w-12">{trip.departsAt}</span>
+          <span className="text-sm text-gray-300 truncate">{trip.direction}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500">{trip.stops.length} stops</span>
+          <span className="text-gray-500 text-xs">{expanded ? '▲' : '▼'}</span>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-[#1e2330] divide-y divide-[#1e2330] max-h-48 overflow-y-auto">
+          {trip.stops.map((stop, idx) => (
+            <div key={idx} className="flex items-center gap-3 px-3 py-1.5">
+              <span className="text-xs font-mono text-gray-500 w-12 shrink-0">{stop.time}</span>
+              <span className="text-xs text-gray-400">{stop.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function TransitPage() {
   const [city, setCity] = useState('Montreal');
@@ -10,12 +44,6 @@ export default function TransitPage() {
   const [schedule, setSchedule] = useState([]);
   const [loadingSchedule, setLoadingSchedule] = useState(false);
   const [scheduleError, setScheduleError] = useState('');
-
-  const [lat, setLat] = useState('45.5017');
-  const [lng, setLng] = useState('-73.5673');
-  const [stops, setStops] = useState([]);
-  const [loadingStops, setLoadingStops] = useState(false);
-  const [stopsError, setStopsError] = useState('');
 
   async function handleSearchSchedule(e) {
     e.preventDefault();
@@ -32,111 +60,86 @@ export default function TransitPage() {
     }
   }
 
-  async function handleFindStops(e) {
-    e.preventDefault();
-    setStopsError('');
-    setStops([]);
-    setLoadingStops(true);
-    try {
-      const res = await getNearbyStops(parseFloat(lat), parseFloat(lng));
-      setStops(res.data);
-    } catch (err) {
-      setStopsError(err.message || 'Failed to find stops');
-    } finally {
-      setLoadingStops(false);
-    }
-  }
-
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-10">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Public Transportation</h1>
-        <p className="text-gray-500 text-sm">Check schedules and find nearby stops.</p>
+        <h1 className="text-2xl font-bold text-[#e8eaf0]">Public Transportation</h1>
+        <p className="text-gray-400 text-sm">Check schedules and find nearby stops.</p>
       </div>
 
-      {/* Schedule Search */}
-      <section className="bg-white border rounded-2xl p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Transit Schedule</h2>
+      <section className="bg-[#13161d] border border-[#1e2330] rounded-lg p-6">
+        <h2 className="text-lg font-semibold text-gray-300 mb-4">Transit Schedule</h2>
         <form onSubmit={handleSearchSchedule} className="flex flex-wrap gap-3 items-end">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">City</label>
+            <label className="block text-xs font-medium text-gray-400 mb-1">City</label>
             <select value={city} onChange={(e) => setCity(e.target.value)}
-              className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400">
+              className="border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md px-3 py-2 text-sm transition-colors focus:border-gray-300 focus:outline-none">
               {CITIES.map((c) => <option key={c}>{c}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Line (optional)</label>
+            <label className="block text-xs font-medium text-gray-400 mb-1">Line (optional)</label>
             <input value={line} onChange={(e) => setLine(e.target.value)} placeholder="e.g. 24 or Green"
-              className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 w-40" />
+              className="border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] placeholder-gray-500 rounded-md px-3 py-2 text-sm w-40 transition-colors focus:border-gray-300 focus:outline-none" />
           </div>
           <button type="submit" disabled={loadingSchedule}
-            className="bg-slate-900 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-slate-700 disabled:opacity-50 transition-colors">
+            className="bg-gray-100 text-black px-5 py-2 rounded-md text-sm font-medium transition-colors hover:bg-white active:bg-gray-300 disabled:opacity-50">
             {loadingSchedule ? 'Loading…' : 'Get Schedule'}
           </button>
         </form>
 
-        {scheduleError && <p className="text-red-600 text-sm mt-3">{scheduleError}</p>}
+        {scheduleError && <p className="text-red-400 text-sm mt-3">{scheduleError}</p>}
 
         {schedule.length > 0 && (
           <div className="mt-4 space-y-3">
-            {schedule.map((entry, i) => (
-              <div key={i} className="border rounded-xl p-4 bg-gray-50 flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xl">{TYPE_ICONS[entry.type] || '🚍'}</span>
-                    <span className="font-medium text-gray-800">Line {entry.line}</span>
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{entry.type}</span>
+            {schedule.map((entry, i) => {
+              if (entry.trips) {
+                return (
+                  <div key={i} className="border border-[#1e2330] rounded-lg p-4 bg-[#0d0f14]">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-xl">{TYPE_ICONS[entry.type] || '🚍'}</span>
+                      <span
+                        className="font-medium px-2 py-0.5 rounded text-white text-sm"
+                        style={{ backgroundColor: entry.color || '#334155' }}
+                      >
+                        {entry.line}
+                      </span>
+                      {entry.name && <span className="text-sm text-gray-400">{entry.name}</span>}
+                      <span className="ml-auto text-xs text-gray-500">{entry.tripsCount} trips</span>
+                    </div>
+
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {entry.trips.map((trip) => (
+                        <TripRow key={trip.tripId} trip={trip} />
+                      ))}
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-500">
-                    Next arrivals: {entry.nextArrivals.join(' · ')}
-                  </p>
+                );
+              }
+
+              return (
+                <div key={i} className="border border-[#1e2330] rounded-lg p-4 bg-[#0d0f14] flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xl">{TYPE_ICONS[entry.type] || '🚍'}</span>
+                      <span
+                        className="font-medium px-2 py-0.5 rounded text-white text-sm"
+                        style={{ backgroundColor: entry.color || '#334155' }}
+                      >
+                        {entry.line}
+                      </span>
+                      {entry.name && <span className="text-sm text-gray-400">{entry.name}</span>}
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      Next arrivals: {entry.nextArrivals?.join(', ')}
+                    </p>
+                  </div>
+                  <span className="text-xs px-2 py-1 rounded-full font-medium bg-blue-500/15 text-blue-400">
+                    {entry.status}
+                  </span>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                  entry.status === 'On time' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                }`}>{entry.status}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Nearby Stops */}
-      <section className="bg-white border rounded-2xl p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Nearby Stops</h2>
-        <form onSubmit={handleFindStops} className="flex flex-wrap gap-3 items-end">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Latitude</label>
-            <input type="number" step="any" value={lat} onChange={(e) => setLat(e.target.value)}
-              className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 w-36" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Longitude</label>
-            <input type="number" step="any" value={lng} onChange={(e) => setLng(e.target.value)}
-              className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 w-36" />
-          </div>
-          <button type="submit" disabled={loadingStops}
-            className="bg-slate-900 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-slate-700 disabled:opacity-50 transition-colors">
-            {loadingStops ? 'Finding…' : 'Find Stops'}
-          </button>
-        </form>
-        <p className="text-xs text-gray-400 mt-1">Default coordinates: Montréal downtown.</p>
-
-        {stopsError && <p className="text-red-600 text-sm mt-3">{stopsError}</p>}
-
-        {stops.length > 0 && (
-          <div className="mt-4 space-y-2">
-            {stops.map((stop) => (
-              <div key={stop.id} className="border rounded-xl p-3 bg-gray-50 flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-800 text-sm">{stop.name}</p>
-                  <p className="text-xs text-gray-500">
-                    {stop.coordinates.lat.toFixed(4)}, {stop.coordinates.lng.toFixed(4)}
-                  </p>
-                </div>
-                <span className="text-sm text-gray-500">{stop.distanceKm} km</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

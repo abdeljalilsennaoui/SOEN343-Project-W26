@@ -121,6 +121,13 @@ function validateQuery(schema) {
   };
 }
 
+const nearbyParkingQuerySchema = z.object({
+  lat: z.coerce.number().refine((n) => Number.isFinite(n), { message: 'lat must be a valid number' }),
+  lng: z.coerce.number().refine((n) => Number.isFinite(n), { message: 'lng must be a valid number' }),
+  radius: z.coerce.number().positive('radius must be a positive number').optional(),
+  maxResults: z.coerce.number().int().positive('maxResults must be a positive integer').optional(),
+});
+
 module.exports = {
   vehicleQuerySchema,
   createReservationSchema,
@@ -135,4 +142,5 @@ module.exports = {
   confirmDraftSchema,
   validateBody,
   validateQuery,
+  nearbyParkingQuerySchema,
 };

@@ -17,7 +17,7 @@ class GetProviderVehiclesCommand extends ICommand {
   }
 
   async execute(request) {
-    const data = await this.receiver.getProviderVehicles(request.userId);
+    const data = await this.receiver.getProviderVehicles(request.userId, request.payload?.role);
     return MobilityResponse.ok(data);
   }
 }

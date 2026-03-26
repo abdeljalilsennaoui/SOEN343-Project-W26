@@ -8,11 +8,11 @@ async function findById(id) {
 }
 
 async function findAll({ city, type } = {}) {
-  const snap = await col.get();
-  let results = snap.docs.map((d) => d.data());
-  if (city) results = results.filter((o) => o.city.toLowerCase() === city.toLowerCase());
-  if (type) results = results.filter((o) => o.type === type);
-  return results;
+  let query = col;
+  if (city) query = query.where('city', '==', city);
+  if (type) query = query.where('type', '==', type);
+  const snap = await query.get();
+  return snap.docs.map((d) => d.data());
 }
 
 module.exports = {

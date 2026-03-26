@@ -28,13 +28,30 @@ async function getSchedule(city, line = null) {
 
   const raw = await gateway.getSchedule(city, line);
 
-  return raw.map((entry) => ({
-    city: entry.city,
-    line: entry.line,
-    type: entry.type,
-    nextArrivals: entry.nextArrivals,
-    status: entry.status,
-  }));
+  return raw.map((entry) => {
+
+    if (entry.trips) {
+      return {
+        city:       entry.city,
+        line:       entry.line,
+        name:       entry.name,
+        type:       entry.type,
+        color:      entry.color,
+        tripsCount: entry.tripsCount,
+        trips:      entry.trips,
+      };
+    }
+
+    return {
+      city:         entry.city,
+      line:         entry.line,
+      name:         entry.name,
+      type:         entry.type,
+      color:        entry.color,
+      nextArrivals: entry.nextArrivals,
+      status:       entry.status,
+    };
+  });
 }
 
 /**

@@ -26,18 +26,18 @@ function ReservationStatus() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">Reservation Details</h2>
-      <div className="bg-white p-5 rounded-lg shadow-sm mb-6">
-        <p className="mb-1"><span className="font-medium">Reservation ID:</span> {reservationId}</p>
+      <h2 className="text-2xl font-bold mb-4 text-[#e8eaf0]">Reservation Details</h2>
+      <div className="bg-[#13161d] border border-[#1e2330] p-5 rounded-lg mb-6">
+        <p className="mb-1 text-gray-300"><span className="font-medium text-[#e8eaf0]">Reservation ID:</span> {reservationId}</p>
         {returnData && (
           <>
-            <p className="mb-1"><span className="font-medium">Status:</span> {returnData.status}</p>
-            <p className="mb-1"><span className="font-medium">End Time:</span> {new Date(returnData.endTime).toLocaleString()}</p>
+            <p className="mb-1 text-gray-300"><span className="font-medium text-[#e8eaf0]">Status:</span> {returnData.status}</p>
+            <p className="mb-1 text-gray-300"><span className="font-medium text-[#e8eaf0]">End Time:</span> {new Date(returnData.endTime).toLocaleString()}</p>
             {returnData.payment && (
-              <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded">
-                <h3 className="font-semibold text-lg mb-2">Payment Details</h3>
-                <p className="mb-1"><span className="font-medium">Amount Charged:</span> ${returnData.payment.amount.toFixed(2)}</p>
-                <p className="mb-1"><span className="font-medium">Payment Status:</span> {returnData.payment.status}</p>
+              <div className="mt-4 p-4 bg-[#0d0f14] border border-[#1e2330] rounded-md">
+                <h3 className="font-semibold text-lg mb-2 text-[#e8eaf0]">Payment Details</h3>
+                <p className="mb-1 text-gray-300"><span className="font-medium text-[#e8eaf0]">Amount Charged:</span> ${returnData.payment.amount.toFixed(2)}</p>
+                <p className="mb-1 text-gray-300"><span className="font-medium text-[#e8eaf0]">Payment Status:</span> {returnData.payment.status}</p>
               </div>
             )}
           </>
@@ -46,14 +46,14 @@ function ReservationStatus() {
       <ErrorMessage error={error} />
       {!returned ? (
         <button
-          className="bg-slate-800 text-white py-2 px-6 rounded-md hover:bg-slate-900 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer"
+          className="bg-gray-100 text-black py-2 px-6 rounded-md font-medium transition-colors hover:bg-white active:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handleReturn}
           disabled={loading}
         >
           {loading ? 'Returning...' : 'Return Vehicle'}
         </button>
       ) : (
-        <p className="text-green-700 font-semibold mt-4">Vehicle returned successfully!</p>
+        <p className="text-green-400 font-semibold mt-4">Vehicle returned successfully!</p>
       )}
     </div>
   );

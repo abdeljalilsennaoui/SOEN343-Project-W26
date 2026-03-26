@@ -23,13 +23,13 @@ const { v4: uuidv4 } = require('uuid');
 
 // Visitor Pattern — typed event objects (each carries accept() for double dispatch)
 const ReservationCreatedEvent = require('../analytics/events/ReservationCreatedEvent');
-const BookingConfirmedEvent   = require('../analytics/events/BookingConfirmedEvent');
-const PaymentProcessedEvent   = require('../analytics/events/PaymentProcessedEvent');
-const VehicleReturnedEvent    = require('../analytics/events/VehicleReturnedEvent');
-const ParkingReservedEvent    = require('../analytics/events/ParkingReservedEvent');
-const ParkingReleasedEvent    = require('../analytics/events/ParkingReleasedEvent');
-const TransitQueryEvent       = require('../analytics/events/TransitQueryEvent');
-const GatewayCallEvent        = require('../analytics/events/GatewayCallEvent');
+const BookingConfirmedEvent = require('../analytics/events/BookingConfirmedEvent');
+const PaymentProcessedEvent = require('../analytics/events/PaymentProcessedEvent');
+const VehicleReturnedEvent = require('../analytics/events/VehicleReturnedEvent');
+const ParkingReservedEvent = require('../analytics/events/ParkingReservedEvent');
+const ParkingReleasedEvent = require('../analytics/events/ParkingReleasedEvent');
+const TransitQueryEvent = require('../analytics/events/TransitQueryEvent');
+const GatewayCallEvent = require('../analytics/events/GatewayCallEvent');
 
 const paymentGateway = createPaymentGateway();
 const transitGateway = createTransitGateway();
@@ -54,13 +54,23 @@ class MobilityService {
   async searchVehicles({ city, type, maxPrice, startTime, endTime }) {
     const options = await MobilityDataGateway.findMobilityOptions({ city, type });
 
-    const results = await Promise.all(
-      options.map(async (option) => {
-        const availability = await AvailabilityService.isAvailable(option, startTime, endTime);
-        const estimatedPrice = PricingService.calculatePrice(option, startTime, endTime);
-        return { optionId: option.id, type: option.type, city: option.city, availability, estimatedPrice, shortDescription: option.description };
-      })
-    );
+    // Single Firestore read for all bookings instead of N reads (one per option)
+    const availMap = await AvailabilityService.checkAvailabilityBatch(options, startTime, endTime);
+
+    const results = options.map((option) => {
+      const avail = availMap.get(option.id) || { available: false, remaining: 0, capacity: 1, conflicting: 0 };
+      const estimatedPrice = PricingService.calculatePrice(option, startTime, endTime);
+      return {
+        optionId: option.id,
+        type: option.type,
+        city: option.city,
+        availability: avail.available,
+        remaining: avail.remaining,
+        capacity: avail.capacity,
+        estimatedPrice,
+        shortDescription: option.description,
+      };
+    });
 
     const filtered = maxPrice !== undefined ? results.filter((r) => r.estimatedPrice <= maxPrice) : results;
     filtered.sort((a, b) => (a.availability !== b.availability ? (a.availability ? -1 : 1) : a.estimatedPrice - b.estimatedPrice));
@@ -74,8 +84,9 @@ class MobilityService {
     const option = await MobilityDataGateway.findMobilityOption(optionId);
     if (!option) throw new ApiError('OPTION_NOT_FOUND', `Mobility option ${optionId} not found`, 404);
 
-    if (!(await AvailabilityService.isAvailable(option, startTime, endTime))) {
-      throw new ApiError('BOOKING_NOT_AVAILABLE', 'Selected option is not available for the requested time window.', 409);
+    const avail = await AvailabilityService.checkAvailability(option, startTime, endTime);
+    if (!avail.available) {
+      throw new ApiError('BOOKING_NOT_AVAILABLE', `No units available (${avail.conflicting}/${avail.capacity} booked for this time window).`, 409);
     }
 
     const totalPrice = PricingService.calculatePrice(option, startTime, endTime);
@@ -148,11 +159,11 @@ class MobilityService {
   /**
    * Add a new vehicle for a mobility provider.
    */
-  async addVehicle(providerId, { city, type, pricePerMin, description }) {
+  async addVehicle(providerId, { city, type, pricePerMin, lat, lng, description }) {
     if (!PROVIDER_TYPES.includes(type)) {
       throw ApiError.badRequest(`Invalid vehicle type: ${type}. Must be one of: ${PROVIDER_TYPES.join(', ')}`);
     }
-    return MobilityDataGateway.saveVehicle({ city, type, pricePerMin, providerId, description: description || '' });
+    return MobilityDataGateway.saveVehicle({ city, type, pricePerMin, providerId, lat, lng, description: description || '' });
   }
 
   /**
@@ -179,8 +190,13 @@ class MobilityService {
   /**
    * List all vehicles owned by a specific provider.
    */
-  async getProviderVehicles(providerId) {
-    const all = await MobilityDataGateway.findVehicles();
+  async getProviderVehicles(providerId, role) {
+    const all = await MobilityDataGateway.findAllVehicles();
+
+    if (role === UserRole.CITY_ADMINISTRATOR || role === UserRole.SYSTEM_ADMINISTRATOR) {
+      return all;
+    }
+
     return all.filter((v) => v.providerId === providerId);
   }
 
@@ -213,13 +229,42 @@ class MobilityService {
     return spot;
   }
 
+  async getNearbyParkings(center, radius, maxResults) {
+    const spots = await MobilityDataGateway.findNearbyParkings(center, radius, maxResults);
+    return spots;
+  }
+
   // ── Transit Access ────────────────────────────────────────────────────────
 
   async getTransitSchedule(city, line = null) {
     EventBus.emit('TRANSIT_QUERY', new TransitQueryEvent({ city, line }));
     EventBus.emit('GATEWAY_CALL', new GatewayCallEvent({ service: 'transit', operation: 'getSchedule', success: true }));
+
     const raw = await transitGateway.getSchedule(city, line);
-    return raw.map((e) => ({ city: e.city, line: e.line, type: e.type, nextArrivals: e.nextArrivals, status: e.status }));
+
+    return raw.map((e) => {
+      if (e.trips) {
+        return {
+          city: e.city,
+          line: e.line,
+          name: e.name,
+          type: e.type,
+          color: e.color,
+          tripsCount: e.tripsCount,
+          trips: e.trips,
+        };
+      }
+
+      return {
+        city: e.city,
+        line: e.line,
+        name: e.name,
+        type: e.type,
+        color: e.color,
+        nextArrivals: e.nextArrivals,
+        status: e.status,
+      };
+    });
   }
 
   async getNearbyStops(lat, lng) {

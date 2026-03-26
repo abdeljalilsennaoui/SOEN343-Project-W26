@@ -23,13 +23,13 @@ const { v4: uuidv4 } = require('uuid');
 
 // Visitor Pattern — typed event objects (each carries accept() for double dispatch)
 const ReservationCreatedEvent = require('../analytics/events/ReservationCreatedEvent');
-const BookingConfirmedEvent   = require('../analytics/events/BookingConfirmedEvent');
-const PaymentProcessedEvent   = require('../analytics/events/PaymentProcessedEvent');
-const VehicleReturnedEvent    = require('../analytics/events/VehicleReturnedEvent');
-const ParkingReservedEvent    = require('../analytics/events/ParkingReservedEvent');
-const ParkingReleasedEvent    = require('../analytics/events/ParkingReleasedEvent');
-const TransitQueryEvent       = require('../analytics/events/TransitQueryEvent');
-const GatewayCallEvent        = require('../analytics/events/GatewayCallEvent');
+const BookingConfirmedEvent = require('../analytics/events/BookingConfirmedEvent');
+const PaymentProcessedEvent = require('../analytics/events/PaymentProcessedEvent');
+const VehicleReturnedEvent = require('../analytics/events/VehicleReturnedEvent');
+const ParkingReservedEvent = require('../analytics/events/ParkingReservedEvent');
+const ParkingReleasedEvent = require('../analytics/events/ParkingReleasedEvent');
+const TransitQueryEvent = require('../analytics/events/TransitQueryEvent');
+const GatewayCallEvent = require('../analytics/events/GatewayCallEvent');
 
 const paymentGateway = createPaymentGateway();
 const transitGateway = createTransitGateway();
@@ -148,11 +148,11 @@ class MobilityService {
   /**
    * Add a new vehicle for a mobility provider.
    */
-  async addVehicle(providerId, { city, type, pricePerMin, description }) {
+  async addVehicle(providerId, { city, type, pricePerMin, lat, lng, description }) {
     if (!PROVIDER_TYPES.includes(type)) {
       throw ApiError.badRequest(`Invalid vehicle type: ${type}. Must be one of: ${PROVIDER_TYPES.join(', ')}`);
     }
-    return MobilityDataGateway.saveVehicle({ city, type, pricePerMin, providerId, description: description || '' });
+    return MobilityDataGateway.saveVehicle({ city, type, pricePerMin, providerId, lat, lng, description: description || '' });
   }
 
   /**
@@ -179,8 +179,13 @@ class MobilityService {
   /**
    * List all vehicles owned by a specific provider.
    */
-  async getProviderVehicles(providerId) {
-    const all = await MobilityDataGateway.findVehicles();
+  async getProviderVehicles(providerId, role) {
+    const all = await MobilityDataGateway.findAllVehicles();
+
+    if (role === UserRole.CITY_ADMINISTRATOR || role === UserRole.SYSTEM_ADMINISTRATOR) {
+      return all;
+    }
+
     return all.filter((v) => v.providerId === providerId);
   }
 
@@ -213,13 +218,42 @@ class MobilityService {
     return spot;
   }
 
+  async getNearbyParkings(center, radius, maxResults) {
+    const spots = await MobilityDataGateway.findNearbyParkings(center, radius, maxResults);
+    return spots;
+  }
+
   // ── Transit Access ────────────────────────────────────────────────────────
 
   async getTransitSchedule(city, line = null) {
     EventBus.emit('TRANSIT_QUERY', new TransitQueryEvent({ city, line }));
     EventBus.emit('GATEWAY_CALL', new GatewayCallEvent({ service: 'transit', operation: 'getSchedule', success: true }));
+
     const raw = await transitGateway.getSchedule(city, line);
-    return raw.map((e) => ({ city: e.city, line: e.line, type: e.type, nextArrivals: e.nextArrivals, status: e.status }));
+
+    return raw.map((e) => {
+      if (e.trips) {
+        return {
+          city: e.city,
+          line: e.line,
+          name: e.name,
+          type: e.type,
+          color: e.color,
+          tripsCount: e.tripsCount,
+          trips: e.trips,
+        };
+      }
+
+      return {
+        city: e.city,
+        line: e.line,
+        name: e.name,
+        type: e.type,
+        color: e.color,
+        nextArrivals: e.nextArrivals,
+        status: e.status,
+      };
+    });
   }
 
   async getNearbyStops(lat, lng) {

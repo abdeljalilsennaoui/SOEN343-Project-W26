@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RENTALS } from '../data/mockLocations';
-import { createBookingDraft, getVehicles, searchMobilityOptions } from '../services/api';
+import { createBookingDraft, getMyBookings, getVehicles, searchMobilityOptions } from '../services/api';
+import { auth } from '../lib/firebase';
 import { geocodeAddress, getNearbyTransitStations, getRoute, initMap, loadGoogleMaps, reverseGeocodeCoordinates } from '../services/googleApiAdapter';
 import { MAP_THEME, MONTREAL, TYPE_META } from '../components/map/mapConfig';
 import { searchNearbyParkings } from '../services/api';
@@ -37,6 +38,7 @@ function mapVehiclesToRentalLocations(vehicles = []) {
         type,
         lat,
         lng,
+        status: vehicle.status || 'AVAILABLE',
         pricePerMinute: Number(vehicle.pricePerMin ?? vehicle.pricePerMinute ?? fallback?.pricePerMinute ?? 0),
         availabilityNote: vehicle.status ? `Status: ${vehicle.status}` : (fallback?.availabilityNote ?? 'Available now'),
       };
@@ -79,6 +81,8 @@ export function useMap() {
   const [transitStops, setTransitStops] = useState([]);
   const [parkingSpots, setParkingSpots] = useState([]);
   const [parkingRadiusMeters, setParkingRadiusMeters] = useState(DEFAULT_PARKING_RADIUS_METERS);
+  const [routeActive, setRouteActive] = useState(false);
+  const [activeBookings, setActiveBookings] = useState([]);
 
   const activeLocations = dataset === 'RENTALS' ? rentals : dataset === 'TRANSIT' ? transitStops : parkingSpots;
 
@@ -159,6 +163,17 @@ export function useMap() {
     }
   }, []);
 
+  const loadActiveBookings = useCallback(async () => {
+    if (!auth.currentUser) return;
+    try {
+      const res = await getMyBookings();
+      const active = (res.data || []).filter((b) => b.status === 'DRAFT' || b.status === 'ACTIVE');
+      setActiveBookings(active);
+    } catch {
+      setActiveBookings([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (!mapReady || dataset !== 'PARKING') return;
     loadParkingSpots(originRef.current);
@@ -168,6 +183,27 @@ export function useMap() {
     if (!mapReady || dataset !== 'RENTALS') return;
     loadRentalVehicles();
   }, [dataset, loadRentalVehicles, mapReady]);
+
+  // Load active bookings on mount and when focus returns
+  useEffect(() => {
+    if (!mapReady) return;
+    loadActiveBookings();
+  }, [loadActiveBookings, mapReady]);
+
+  // Refresh vehicle data when the page regains focus (e.g. after booking on /book)
+  useEffect(() => {
+    if (!mapReady) return;
+
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (dataset === 'RENTALS') loadRentalVehicles();
+      if (dataset === 'PARKING') loadParkingSpots(originRef.current, { force: true });
+      loadActiveBookings();
+    };
+
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [dataset, loadParkingSpots, loadRentalVehicles, mapReady]);
 
 
   const clearMarkers = useCallback(() => {
@@ -276,10 +312,12 @@ export function useMap() {
         steps: normalizeRouteSteps(result.steps),
       });
       setSelectedLocation(location);
+      clearMarkers();
+      setRouteActive(true);
     } catch (error) {
       alert('Could not calculate route: ' + error.message);
     }
-  }, [setDestinationMarker]);
+  }, [clearMarkers, setDestinationMarker]);
 
   const calculateTransitRoute = useCallback(async (destinationLatLng, destinationName = 'Selected destination') => {
     try {
@@ -297,10 +335,12 @@ export function useMap() {
         steps: normalizeRouteSteps(result.steps),
       });
       setSelectedLocation({ ...destinationLatLng, name: destinationName, type: 'TRANSIT_STATION' });
+      clearMarkers();
+      setRouteActive(true);
     } catch (error) {
       alert(`Could not calculate transit route: ${error.message}`);
     }
-  }, [setDestinationMarker]);
+  }, [clearMarkers, setDestinationMarker]);
 
   const handleBooking = useCallback(async (location) => {
     if (location.type === 'PARKING' || location.type.startsWith('TRANSIT_')) {
@@ -308,11 +348,14 @@ export function useMap() {
       return;
     }
 
-    const option = mobilityOptionsRef.current.find((item) => item.type === location.type);
+    const option = mobilityOptionsRef.current.find((item) => item.type === location.type && item.availability);
     if (!option) {
+      const anyOfType = mobilityOptionsRef.current.some((item) => item.type === location.type);
       setBookingStatus({
         ok: false,
-        message: 'No backend option matched. Make sure the backend is running.',
+        message: anyOfType
+          ? 'All units of this type are fully booked right now.'
+          : 'No backend option matched. Make sure the backend is running.',
       });
       return;
     }
@@ -370,18 +413,20 @@ export function useMap() {
         return;
       }
 
-      const markerColor = TYPE_META[location.type]?.markerColor ?? TYPE_META.PARKING.markerColor;
+      const isUnavailable = location.status && location.status !== 'AVAILABLE';
+      const markerColor = isUnavailable ? '#4b5563' : (TYPE_META[location.type]?.markerColor ?? TYPE_META.PARKING.markerColor);
 
       const markerOptions = {
         position: { lat: location.lat, lng: location.lng },
         map: mapRef.current,
         title: location.type === "PARKING" ? location.facilityName : location.name,
+        opacity: isUnavailable ? 0.4 : 1,
       };
 
       if (location.type === 'PARKING') {
         markerOptions.icon = {
           path: 'M -6,-10 L 6,-10 L 6,10 L -6,10 Z',
-          fillColor: '#9ca3af',
+          fillColor: '#8b7ea8',
           fillOpacity: 0.9,
           strokeColor: '#fff',
           strokeWeight: 1.5,
@@ -403,7 +448,19 @@ export function useMap() {
 
       marker.addListener('click', () => {
         setSelectedLocation(location);
-        infoWindowRef.current?.setContent(buildInfoWindowContent(location, dataset));
+        // Enrich rental locations with capacity info from mobility options search
+        const enriched = { ...location };
+        if (dataset === 'RENTALS') {
+          const opt = mobilityOptionsRef.current.find((o) => o.type === location.type);
+          if (opt) {
+            enriched.remaining = opt.remaining;
+            enriched.capacity = opt.capacity;
+            enriched.availabilityNote = opt.availability
+              ? `${opt.remaining}/${opt.capacity} available`
+              : 'Fully booked';
+          }
+        }
+        infoWindowRef.current?.setContent(buildInfoWindowContent(enriched, dataset));
         infoWindowRef.current?.open(mapRef.current, marker);
       });
 
@@ -448,7 +505,42 @@ export function useMap() {
       destinationMarkerRef.current.setMap(null);
       destinationMarkerRef.current = null;
     }
+    setRouteActive(false);
   }, []);
+
+  const resetMap = useCallback(() => {
+    // Clear route + destination marker
+    dirRendererRef.current?.set('directions', null);
+    setRouteInfo(null);
+    destinationRef.current = null;
+    setDestinationLabel('Click map to set destination');
+    if (destinationMarkerRef.current) {
+      destinationMarkerRef.current.setMap(null);
+      destinationMarkerRef.current = null;
+    }
+
+    // Reset origin back to Montreal
+    originRef.current = MONTREAL;
+    setOriginLabel('Downtown Montreal hub');
+    setOriginMarker(MONTREAL);
+
+    // Clear inputs and UI state
+    setAddressInput('');
+    setDestinationInput('');
+    setSelectedLocation(null);
+    setMapClickMode(null);
+    setDataset('RENTALS');
+
+    // Re-center map
+    mapRef.current?.setCenter(MONTREAL);
+    mapRef.current?.setZoom(12.8);
+
+    // Turn off transit layer
+    transitLayerRef.current?.setMap(null);
+
+    // Re-show markers
+    setRouteActive(false);
+  }, [setOriginMarker]);
 
   const onStartMapPick = useCallback((mode) => {
     setMapClickMode(mode);
@@ -583,8 +675,13 @@ export function useMap() {
     }
 
     setSelectedLocation(null);
-    placeMarkers(activeLocations);
-  }, [activeLocations, dataset, mapReady, placeMarkers]);
+
+    if (routeActive) {
+      clearMarkers();
+    } else {
+      placeMarkers(activeLocations);
+    }
+  }, [activeLocations, clearMarkers, dataset, mapReady, placeMarkers, routeActive]);
 
   return {
     mapContainerId: MAP_CONTAINER_ID,
@@ -617,6 +714,8 @@ export function useMap() {
     onUseMyLocation,
     onClearRoute,
     onStartMapPick,
+    resetMap,
+    activeBookings,
     calculateTransitRoute,
     handleRouteToLocation,
     handleBooking,

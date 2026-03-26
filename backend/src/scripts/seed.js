@@ -17,12 +17,6 @@ const { TripMode, VehicleStatus } = require('../models/enums');
 
 async function seedVehicles() {
   const col = db.collection('vehicles');
-  const existing = await col.limit(1).get();
-  if (!existing.empty) {
-    console.log('vehicles: already seeded, skipping.');
-    return;
-  }
-
   const cities = ['Montreal', 'Toronto', 'Vancouver'];
   const types = [TripMode.BIKE_SHARING, TripMode.SCOOTER_SHARING, TripMode.CAR_SHARING];
   const prices = {
@@ -30,6 +24,71 @@ async function seedVehicles() {
     [TripMode.SCOOTER_SHARING]: 0.25,
     [TripMode.CAR_SHARING]: 0.50,
   };
+  const cityCenters = {
+    Montreal: { lat: 45.5017, lng: -73.5673 },
+    Toronto: { lat: 43.6532, lng: -79.3832 },
+    Vancouver: { lat: 49.2827, lng: -123.1207 },
+  };
+
+  function computeCoords(city, indexInCity = 0, vehicleType = TripMode.BIKE_SHARING) {
+    const center = cityCenters[city] ?? cityCenters.Montreal;
+    const typeOffset = {
+      [TripMode.BIKE_SHARING]: -0.004,
+      [TripMode.SCOOTER_SHARING]: 0,
+      [TripMode.CAR_SHARING]: 0.004,
+    };
+    const ringOffset = (indexInCity % 6) * 0.002;
+
+    return {
+      lat: Number((center.lat + typeOffset[vehicleType] + ringOffset).toFixed(6)),
+      lng: Number((center.lng + typeOffset[vehicleType] - ringOffset).toFixed(6)),
+    };
+  }
+
+  const existing = await col.limit(1).get();
+  if (!existing.empty) {
+    const allSnap = await col.get();
+    const docsNeedingCoords = allSnap.docs.filter((doc) => {
+      const v = doc.data();
+      return !Number.isFinite(v.lat) || !Number.isFinite(v.lng);
+    });
+
+    if (docsNeedingCoords.length === 0) {
+      console.log('vehicles: already seeded, coordinates already present.');
+      return;
+    }
+
+    const cityCounters = {};
+    let backfilled = 0;
+
+    let batch = db.batch();
+    let batchCount = 0;
+
+    for (const doc of docsNeedingCoords) {
+      const vehicle = doc.data();
+      const cityKey = vehicle.city || 'Montreal';
+      const currentIndex = cityCounters[cityKey] ?? 0;
+      cityCounters[cityKey] = currentIndex + 1;
+
+      const coords = computeCoords(cityKey, currentIndex, vehicle.type);
+      batch.update(doc.ref, { lat: coords.lat, lng: coords.lng });
+      backfilled++;
+      batchCount++;
+
+      if (batchCount >= 450) {
+        await batch.commit();
+        batch = db.batch();
+        batchCount = 0;
+      }
+    }
+
+    if (batchCount > 0) {
+      await batch.commit();
+    }
+
+    console.log(`vehicles: backfilled coordinates for ${backfilled} existing documents.`);
+    return;
+  }
 
   const batch = db.batch();
   let count = 0;
@@ -38,6 +97,8 @@ async function seedVehicles() {
     for (const type of types) {
       for (let i = 0; i < 3; i++) {
         const id = uuidv4();
+        const { lat, lng } = computeCoords(city, i, type);
+
         batch.set(col.doc(id), {
           id,
           type,
@@ -45,6 +106,8 @@ async function seedVehicles() {
           status: VehicleStatus.AVAILABLE,
           pricePerMin: prices[type],
           providerId: null,
+          lat,
+          lng,
         });
         count++;
       }

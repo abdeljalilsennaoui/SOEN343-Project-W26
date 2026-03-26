@@ -14,6 +14,8 @@ const MockWeatherGateway = require('./weather/MockWeatherGateway');
 const MockMapsGateway = require('./maps/MockMapsGateway');
 const MockParkingGateway = require('./parking/MockParkingGateway');
 const MockTransitGateway = require('./transit/MockTransitGateway');
+const OverpassParkingGateway = require('./parking/OverpassParkingGateway');
+const TransitGateway = require('./transit/GtfTransitGateway');
 
 const GATEWAY_MAP = {
   payment: () => new MockPaymentGateway(),
@@ -37,8 +39,17 @@ function createGateway(type) {
 function createPaymentGateway() { return createGateway('payment'); }
 function createWeatherGateway()  { return createGateway('weather'); }
 function createMapsGateway()     { return createGateway('maps'); }
-function createParkingGateway()  { return createGateway('parking'); }
-function createTransitGateway()  { return createGateway('transit'); }
+function createParkingGateway() {
+  if (process.env.USE_MOCK_PARKING === 'true') {
+    return new MockParkingGateway();
+  }
+  return new OverpassParkingGateway();
+}
+function createTransitGateway() {
+  return process.env.USE_MOCK_TRANSIT === 'true'
+    ? new MockTransitGateway()
+    : new TransitGateway();
+}
 
 module.exports = {
   createGateway,

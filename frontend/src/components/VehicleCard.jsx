@@ -13,7 +13,7 @@ const typeLabels = {
   SCOOTER_SHARING: 'Scooter',
 };
 
-function VehicleCard({ vehicle }) {
+function VehicleCard({ vehicle, onEdit, onDelete }) {
   const navigate = useNavigate();
 
   return (
@@ -28,15 +28,36 @@ function VehicleCard({ vehicle }) {
         <p><span className="font-medium">City:</span> {vehicle.city}</p>
         <p><span className="font-medium">Price:</span> ${vehicle.pricePerMin.toFixed(2)}/min</p>
         <p><span className="font-medium">Provider:</span> {vehicle.providerId || 'N/A'}</p>
+        {vehicle.lat && vehicle.lng && (
+          <p><span className="font-medium">Location:</span> {vehicle.lat.toFixed(4)}, {vehicle.lng.toFixed(4)}</p>
+        )}
       </div>
-      {vehicle.status === 'AVAILABLE' && (
-        <button
-          className="w-full bg-slate-800 text-white py-2 px-4 rounded-md hover:bg-slate-900 transition-colors cursor-pointer"
-          onClick={() => navigate(`/reserve/${vehicle.id}`)}
-        >
-          Reserve
-        </button>
-      )}
+      <div className="flex gap-2">
+        {vehicle.status === 'AVAILABLE' && (
+          <button
+            className="flex-1 bg-slate-800 text-white py-2 px-4 rounded-md hover:bg-slate-900 transition-colors cursor-pointer text-sm"
+            onClick={() => navigate(`/reserve/${vehicle.id}`)}
+          >
+            Reserve
+          </button>
+        )}
+        {onEdit && (
+          <button
+            className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors cursor-pointer text-sm"
+            onClick={() => onEdit(vehicle)}
+          >
+            Edit
+          </button>
+        )}
+        {onDelete && (
+          <button
+            className="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition-colors cursor-pointer text-sm"
+            onClick={() => onDelete(vehicle.id)}
+          >
+            Delete
+          </button>
+        )}
+      </div>
     </div>
   );
 }

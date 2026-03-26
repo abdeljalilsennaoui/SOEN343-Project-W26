@@ -141,7 +141,7 @@ function VehicleList() {
 
   const handleDelete = async (vehicleId) => {
     if (!window.confirm('Are you sure you want to delete this vehicle?')) return;
-    
+
     setError(null);
     try {
       await deactivateProviderVehicle(vehicleId);
@@ -157,19 +157,19 @@ function VehicleList() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Available Vehicles</h2>
+        <h2 className="text-2xl font-bold text-[#e8eaf0]">Available Vehicles</h2>
         <button
           onClick={openAddModal}
           disabled={!isCityAdmin || profileLoading}
-          className="bg-slate-800 text-white px-4 py-2 rounded-md hover:bg-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-gray-100 text-black px-4 py-2 rounded-md font-medium transition-colors hover:bg-white active:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           + Add Vehicle
         </button>
       </div>
 
       {!isCityAdmin && !profileLoading && (
-        <div className="mb-6 p-4 rounded-md bg-yellow-50 border border-yellow-200">
-          <p className="text-yellow-800 text-sm">
+        <div className="mb-6 p-4 rounded-md bg-yellow-500/15 border border-yellow-500/30">
+          <p className="text-yellow-400 text-sm">
             You must be a City Administrator to manage vehicles.
           </p>
         </div>
@@ -179,7 +179,7 @@ function VehicleList() {
         <select
           value={city}
           onChange={(e) => setCity(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm"
+          className="px-4 py-2 border border-gray-600 bg-[#13161d] text-[#e8eaf0] rounded-md text-sm transition-colors focus:border-gray-300 focus:outline-none"
         >
           {CITIES.map((c) => (
             <option key={c} value={c}>{c || 'All Cities'}</option>
@@ -188,7 +188,7 @@ function VehicleList() {
         <select
           value={type}
           onChange={(e) => setType(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-md text-sm"
+          className="px-4 py-2 border border-gray-600 bg-[#13161d] text-[#e8eaf0] rounded-md text-sm transition-colors focus:border-gray-300 focus:outline-none"
         >
           {TYPES.map((t) => (
             <option key={t} value={t}>{TYPE_LABELS[t]}</option>
@@ -199,15 +199,15 @@ function VehicleList() {
       <ErrorMessage error={error} />
 
       {loading ? (
-        <p className="text-gray-400 text-center py-8">Loading vehicles...</p>
+        <p className="text-gray-500 text-center py-8">Loading vehicles...</p>
       ) : vehicles.length === 0 ? (
-        <p className="text-gray-400 text-center py-8">No vehicles found matching your filters.</p>
+        <p className="text-gray-500 text-center py-8">No vehicles found matching your filters.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {vehicles.map((v) => (
-            <VehicleCard 
-              key={v.id} 
-              vehicle={v} 
+            <VehicleCard
+              key={v.id}
+              vehicle={v}
               onEdit={isCityAdmin ? openEditModal : undefined}
               onDelete={isCityAdmin ? handleDelete : undefined}
             />
@@ -216,9 +216,9 @@ function VehicleList() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-bold mb-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-[#13161d] border border-[#1e2330] rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-bold mb-4 text-[#e8eaf0]">
               {editingVehicle ? 'Edit Vehicle' : 'Add Vehicle'}
             </h3>
 
@@ -226,12 +226,12 @@ function VehicleList() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">City</label>
+                <label className="block text-sm font-medium text-gray-400 mb-1">City</label>
                 <select
                   name="city"
                   value={formData.city}
                   onChange={handleFormChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="w-full px-3 py-2 border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md transition-colors focus:border-gray-300 focus:outline-none"
                   required
                 >
                   {CITIES.filter(c => c).map((c) => (
@@ -241,12 +241,12 @@ function VehicleList() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Type</label>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Type</label>
                 <select
                   name="type"
                   value={formData.type}
                   onChange={handleFormChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="w-full px-3 py-2 border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md transition-colors focus:border-gray-300 focus:outline-none"
                   required
                 >
                   {TYPES.filter(t => t).map((t) => (
@@ -256,7 +256,7 @@ function VehicleList() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Price per Min ($)</label>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Price per Min ($)</label>
                 <input
                   type="number"
                   name="pricePerMin"
@@ -264,57 +264,57 @@ function VehicleList() {
                   onChange={handleFormChange}
                   step="0.01"
                   min="0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="w-full px-3 py-2 border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md transition-colors focus:border-gray-300 focus:outline-none"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Latitude</label>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Latitude</label>
                   <input
                     type="number"
                     name="lat"
                     value={formData.lat}
                     onChange={handleFormChange}
                     step="0.0001"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md transition-colors focus:border-gray-300 focus:outline-none"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Longitude</label>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Longitude</label>
                   <input
                     type="number"
                     name="lng"
                     value={formData.lng}
                     onChange={handleFormChange}
                     step="0.0001"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md transition-colors focus:border-gray-300 focus:outline-none"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Description</label>
                 <textarea
                   name="description"
                   value={formData.description}
                   onChange={handleFormChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  className="w-full px-3 py-2 border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md text-sm transition-colors focus:border-gray-300 focus:outline-none"
                   rows="2"
                 />
               </div>
 
               {editingVehicle && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Availability</label>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Availability</label>
                   <select
                     name="status"
                     value={formData.status}
                     onChange={handleFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    className="w-full px-3 py-2 border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md transition-colors focus:border-gray-300 focus:outline-none"
                   >
                     {AVAILABILITY_OPTIONS.map((status) => (
                       <option key={status} value={status}>{status}</option>
@@ -327,14 +327,14 @@ function VehicleList() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border border-gray-500 rounded-md text-gray-300 transition-colors hover:border-gray-400 hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-900 disabled:opacity-50"
+                  className="flex-1 px-4 py-2 bg-gray-100 text-black rounded-md font-medium transition-colors hover:bg-white active:bg-gray-300 disabled:opacity-50"
                 >
                   {submitting ? 'Saving...' : editingVehicle ? 'Update' : 'Add'}
                 </button>

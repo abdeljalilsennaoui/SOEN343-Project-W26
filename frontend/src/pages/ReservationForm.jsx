@@ -30,13 +30,13 @@ function ReservationForm() {
 
   return (
     <div className="max-w-md">
-      <h2 className="text-2xl font-bold mb-4">Reserve Vehicle</h2>
-      <p className="text-gray-500 mb-4">
-        Vehicle: <code className="bg-gray-100 px-2 py-0.5 rounded text-sm">{vehicleId}</code>
+      <h2 className="text-2xl font-bold mb-4 text-[#e8eaf0]">Reserve Vehicle</h2>
+      <p className="text-gray-400 mb-4">
+        Vehicle: <code className="bg-[#1e2330] px-2 py-0.5 rounded text-sm text-gray-300">{vehicleId}</code>
       </p>
       <ErrorMessage error={error} />
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <label htmlFor="userId" className="font-semibold">Your User ID</label>
+        <label htmlFor="userId" className="font-semibold text-gray-300">Your User ID</label>
         <input
           id="userId"
           type="text"
@@ -44,12 +44,12 @@ function ReservationForm() {
           onChange={(e) => setUserId(e.target.value)}
           placeholder="Enter your user ID"
           required
-          className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+          className="px-3 py-2 border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] placeholder-gray-500 rounded-md text-sm transition-colors focus:border-gray-300 focus:outline-none"
         />
         <button
           type="submit"
           disabled={loading}
-          className="bg-slate-800 text-white py-2 px-4 rounded-md hover:bg-slate-900 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer"
+          className="bg-gray-100 text-black py-2 px-4 rounded-md font-medium transition-colors hover:bg-white active:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? 'Reserving...' : 'Confirm Reservation'}
         </button>

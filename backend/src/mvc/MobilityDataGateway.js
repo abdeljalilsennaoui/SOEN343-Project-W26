@@ -18,6 +18,7 @@ const Parking = require('../models/Parking');
 const PaymentReceipt = require('../models/PaymentReceipt');
 const AnalyticsReport = require('../models/AnalyticsReport');
 const MobilityDataMapper = require('./MobilityDataMapper');
+const ParkingAdapter = require('../services/ParkingAdapter');
 
 class MobilityDataGateway {
   // ── Bookings ──────────────────────────────────────────────────────────────
@@ -48,6 +49,11 @@ class MobilityDataGateway {
   // ── Vehicles ──────────────────────────────────────────────────────────────
 
   async findVehicles(filters = {}) {
+    const docs = await Vehicle.getAvailableVehicles(filters.city, filters.type);
+    return docs.map(MobilityDataMapper.toVehicle);
+  }
+
+  async findAllVehicles(filters = {}) {
     const docs = await Vehicle.findAll(filters);
     return docs.map(MobilityDataMapper.toVehicle);
   }
@@ -115,6 +121,10 @@ class MobilityDataGateway {
 
   async releaseSpot(spotId) {
     return Parking.releaseSpot(spotId);
+  }
+
+  async findNearbyParkings(center, radius, maxResults) {
+    return ParkingAdapter.getNearbySpots(center, radius, maxResults);
   }
 
   // ── Payment Receipts ──────────────────────────────────────────────────────

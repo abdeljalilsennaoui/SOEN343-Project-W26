@@ -81,10 +81,24 @@ class ReleaseParkingSpotCommand extends ICommand {
   }
 }
 
+class GetNearbyParkingsCommand extends ICommand {
+  constructor(receiver) {
+    super();
+    this.receiver = receiver;
+  }
+
+  async execute(request) {
+    const { lat, lng, radius, maxResults } = request.payload;
+    const data = await this.receiver.getNearbyParkings({ lat, lng }, radius, maxResults);
+    return MobilityResponse.ok(data);
+  }
+}
+
 module.exports = {
   GetParkingFacilitiesCommand,
   GetFacilitySpotsCommand,
   GetAvailableSpotsCommand,
   ReserveParkingSpotCommand,
   ReleaseParkingSpotCommand,
+  GetNearbyParkingsCommand,
 };

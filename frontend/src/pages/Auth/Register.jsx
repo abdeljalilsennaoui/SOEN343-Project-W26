@@ -20,7 +20,7 @@ function getErrorMessage(code) {
 
 
 function Register() {
-  const { register, signInWithGoogle } = useAuth();
+  const { register, signInWithGoogle, refreshRole } = useAuth();
   const navigate = useNavigate();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -70,6 +70,8 @@ function Register() {
       // Create the Firestore user doc with the chosen role before any
       // other API call can trigger auto-provisioning as COMMUTER.
       await registerUser(formData.role);
+      // Re-fetch the role so Navbar and guards reflect the correct role immediately.
+      await refreshRole();
       navigate('/');
     } catch (err) {
       setError(getErrorMessage(err.code));

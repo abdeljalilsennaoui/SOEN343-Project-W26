@@ -13,16 +13,29 @@ const db = admin.firestore();
 
 const { TripMode, VehicleStatus } = require('../models/enums');
 
-// ─── Vehicles ─────────────────────────────────────────────────────────────────
+// ─── Vehicles + Mobility Options (seeded together so IDs match) ───────────────
 
 async function seedVehicles() {
-  const col = db.collection('vehicles');
+  const vehiclesCol = db.collection('vehicles');
+  const optionsCol = db.collection('mobilityOptions');
+
+  const existing = await vehiclesCol.limit(1).get();
+  if (!existing.empty) {
+    console.log('vehicles: already seeded, skipping.');
+    return;
+  }
+
   const cities = ['Montreal', 'Toronto', 'Vancouver'];
   const types = [TripMode.BIKE_SHARING, TripMode.SCOOTER_SHARING, TripMode.CAR_SHARING];
   const prices = {
     [TripMode.BIKE_SHARING]: 0.15,
     [TripMode.SCOOTER_SHARING]: 0.25,
     [TripMode.CAR_SHARING]: 0.50,
+  };
+  const descriptions = {
+    [TripMode.BIKE_SHARING]: 'Electric bike — ideal for short urban trips',
+    [TripMode.SCOOTER_SHARING]: 'Electric scooter — fast and convenient',
+    [TripMode.CAR_SHARING]: 'Compact car — great for longer distances',
   };
   const cityCenters = {
     Montreal: { lat: 45.5017, lng: -73.5673 },
@@ -38,138 +51,47 @@ async function seedVehicles() {
       [TripMode.CAR_SHARING]: 0.004,
     };
     const ringOffset = (indexInCity % 6) * 0.002;
-
     return {
       lat: Number((center.lat + typeOffset[vehicleType] + ringOffset).toFixed(6)),
       lng: Number((center.lng + typeOffset[vehicleType] - ringOffset).toFixed(6)),
     };
   }
 
-  const existing = await col.limit(1).get();
-  if (!existing.empty) {
-    const allSnap = await col.get();
-    const docsNeedingCoords = allSnap.docs.filter((doc) => {
-      const v = doc.data();
-      return !Number.isFinite(v.lat) || !Number.isFinite(v.lng);
-    });
-
-    if (docsNeedingCoords.length === 0) {
-      console.log('vehicles: already seeded, coordinates already present.');
-      return;
-    }
-
-    const cityCounters = {};
-    let backfilled = 0;
-
-    let batch = db.batch();
-    let batchCount = 0;
-
-    for (const doc of docsNeedingCoords) {
-      const vehicle = doc.data();
-      const cityKey = vehicle.city || 'Montreal';
-      const currentIndex = cityCounters[cityKey] ?? 0;
-      cityCounters[cityKey] = currentIndex + 1;
-
-      const coords = computeCoords(cityKey, currentIndex, vehicle.type);
-      batch.update(doc.ref, { lat: coords.lat, lng: coords.lng });
-      backfilled++;
-      batchCount++;
-
-      if (batchCount >= 450) {
-        await batch.commit();
-        batch = db.batch();
-        batchCount = 0;
-      }
-    }
-
-    if (batchCount > 0) {
-      await batch.commit();
-    }
-
-    console.log(`vehicles: backfilled coordinates for ${backfilled} existing documents.`);
-    return;
-  }
-
   const batch = db.batch();
   let count = 0;
 
   for (const city of cities) {
     for (const type of types) {
       for (let i = 0; i < 3; i++) {
+        // Same ID for vehicle and option — 1:1 link, capacity=1 so counts match pins.
         const id = uuidv4();
         const { lat, lng } = computeCoords(city, i, type);
 
-        batch.set(col.doc(id), {
-          id,
-          type,
-          city,
+        batch.set(vehiclesCol.doc(id), {
+          id, type, city,
           status: VehicleStatus.AVAILABLE,
           pricePerMin: prices[type],
           providerId: null,
-          lat,
-          lng,
+          lat, lng,
         });
-        count++;
-      }
-    }
-  }
 
-  await batch.commit();
-  console.log(`vehicles: seeded ${count} documents.`);
-}
-
-// ─── Mobility Options ─────────────────────────────────────────────────────────
-
-async function seedMobilityOptions() {
-  const col = db.collection('mobilityOptions');
-  const existing = await col.limit(1).get();
-  if (!existing.empty) {
-    console.log('mobilityOptions: already seeded, skipping.');
-    return;
-  }
-
-  const cities = ['Montreal', 'Toronto', 'Vancouver'];
-  const types = [TripMode.BIKE_SHARING, TripMode.SCOOTER_SHARING, TripMode.CAR_SHARING];
-  const prices = {
-    [TripMode.BIKE_SHARING]: 0.1,
-    [TripMode.SCOOTER_SHARING]: 0.2,
-    [TripMode.CAR_SHARING]: 0.5,
-  };
-  const descriptions = {
-    [TripMode.BIKE_SHARING]: 'Electric bike — ideal for short urban trips',
-    [TripMode.SCOOTER_SHARING]: 'Electric scooter — fast and convenient',
-    [TripMode.CAR_SHARING]: 'Compact car — great for longer distances',
-  };
-  const capacities = {
-    [TripMode.BIKE_SHARING]: 8,
-    [TripMode.SCOOTER_SHARING]: 6,
-    [TripMode.CAR_SHARING]: 3,
-  };
-
-  const batch = db.batch();
-  let count = 0;
-
-  for (const city of cities) {
-    for (const type of types) {
-      for (let i = 0; i < 3; i++) {
-        const id = uuidv4();
-        batch.set(col.doc(id), {
-          id,
-          type,
-          city,
+        batch.set(optionsCol.doc(id), {
+          id, type, city,
           basePrice: prices[type],
-          capacity: capacities[type],
+          capacity: 1,
           description: `${descriptions[type]} in ${city} (#${i + 1})`,
           blockedPeriods: [],
         });
+
         count++;
       }
     }
   }
 
   await batch.commit();
-  console.log(`mobilityOptions: seeded ${count} documents.`);
+  console.log(`vehicles + options: seeded ${count} pairs.`);
 }
+
 
 // ─── Parking ──────────────────────────────────────────────────────────────────
 
@@ -225,7 +147,6 @@ async function seedParking() {
 async function main() {
   console.log('Starting seed...');
   await seedVehicles();
-  await seedMobilityOptions();
   await seedParking();
   console.log('Seed complete.');
   process.exit(0);

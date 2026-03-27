@@ -94,9 +94,23 @@ export function useMap() {
 
   const loadRentalVehicles = useCallback(async () => {
     try {
-      const response = await getVehicles({ city: 'Montreal' });
-      const backendVehicles = Array.isArray(response?.data) ? response.data : [];
+      const now = new Date();
+      const startTime = new Date(now.getTime() + 5 * 60 * 1000).toISOString();
+      const endTime = new Date(now.getTime() + 65 * 60 * 1000).toISOString();
+
+      const [vehicleRes, optionsRes] = await Promise.all([
+        getVehicles({ city: 'Montreal' }),
+        searchMobilityOptions({ city: 'Montreal', startTime, endTime }),
+      ]);
+
+      const backendVehicles = Array.isArray(vehicleRes?.data) ? vehicleRes.data : [];
       const mappedVehicles = mapVehiclesToRentalLocations(backendVehicles);
+
+      // Refresh mobility options — used for both the InfoWindow badge and booking handler.
+      if (Array.isArray(optionsRes?.data)) {
+        mobilityOptionsRef.current = optionsRes.data;
+        setBackendAvailable(true);
+      }
 
       if (mappedVehicles.length > 0) {
         rentalsRef.current = mappedVehicles;
@@ -190,20 +204,28 @@ export function useMap() {
     loadActiveBookings();
   }, [loadActiveBookings, mapReady]);
 
-  // Refresh vehicle data when the page regains focus (e.g. after booking on /book)
+  // Refresh data when the page regains focus — covers both tab switching
+  // (visibilitychange) and in-app navigation back to the map (window focus).
   useEffect(() => {
     if (!mapReady) return;
 
-    const onVisible = () => {
-      if (document.visibilityState !== 'visible') return;
+    const refresh = () => {
       if (dataset === 'RENTALS') loadRentalVehicles();
       if (dataset === 'PARKING') loadParkingSpots(originRef.current, { force: true });
       loadActiveBookings();
     };
 
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+
     document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [dataset, loadParkingSpots, loadRentalVehicles, mapReady]);
+    window.addEventListener('focus', refresh);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [dataset, loadParkingSpots, loadRentalVehicles, loadActiveBookings, mapReady]);
 
 
   const clearMarkers = useCallback(() => {
@@ -348,13 +370,16 @@ export function useMap() {
       return;
     }
 
-    const option = mobilityOptionsRef.current.find((item) => item.type === location.type && item.availability);
+    // Prefer the exact option matched to this vehicle (same ID); fall back to any available of same type.
+    const option =
+      mobilityOptionsRef.current.find((item) => item.optionId === location.id && item.availability) ??
+      mobilityOptionsRef.current.find((item) => item.type === location.type && item.availability);
     if (!option) {
       const anyOfType = mobilityOptionsRef.current.some((item) => item.type === location.type);
       setBookingStatus({
         ok: false,
         message: anyOfType
-          ? 'All units of this type are fully booked right now.'
+          ? 'This vehicle is fully booked right now.'
           : 'No backend option matched. Make sure the backend is running.',
       });
       return;
@@ -373,10 +398,12 @@ export function useMap() {
         ok: true,
         message: `Draft created — ID: ${response.data.id} · $${response.data.totalPrice.toFixed(2)} for 60 min`,
       });
+      // Refresh availability immediately so markers and badges reflect the new booking.
+      loadRentalVehicles();
     } catch (error) {
       setBookingStatus({ ok: false, message: error.message });
     }
-  }, []);
+  }, [loadRentalVehicles]);
 
   const placeMarkers = useCallback((locations) => {
     clearMarkers();
@@ -413,7 +440,11 @@ export function useMap() {
         return;
       }
 
-      const isUnavailable = location.status && location.status !== 'AVAILABLE';
+      // Grey out if: vehicle status is not AVAILABLE, OR its specific option is fully booked.
+      // Vehicle ID === option ID (seeded 1:1), so we look up the exact option for this pin.
+      const specificOption = mobilityOptionsRef.current.find((o) => o.optionId === location.id);
+      const isBookedOut = specificOption ? !specificOption.availability : false;
+      const isUnavailable = (location.status && location.status !== 'AVAILABLE') || isBookedOut;
       const markerColor = isUnavailable ? '#4b5563' : (TYPE_META[location.type]?.markerColor ?? TYPE_META.PARKING.markerColor);
 
       const markerOptions = {
@@ -448,16 +479,20 @@ export function useMap() {
 
       marker.addListener('click', () => {
         setSelectedLocation(location);
-        // Enrich rental locations with capacity info from mobility options search
+        // Enrich badge with type-level totals (e.g. "2/3 bikes available").
+        // Use vehicle pin count as the denominator — works correctly whether the DB
+        // has capacity=1 (migrated) or the old high-capacity options (pre-migration).
         const enriched = { ...location };
         if (dataset === 'RENTALS') {
-          const opt = mobilityOptionsRef.current.find((o) => o.type === location.type);
-          if (opt) {
-            enriched.remaining = opt.remaining;
-            enriched.capacity = opt.capacity;
-            enriched.availabilityNote = opt.availability
-              ? `${opt.remaining}/${opt.capacity} available`
-              : 'Fully booked';
+          const opts = mobilityOptionsRef.current.filter((o) => o.type === location.type);
+          const vehicleCount = rentalsRef.current.filter((v) => v.type === location.type).length;
+          const capacity = vehicleCount || opts.reduce((s, o) => s + (o.capacity ?? 0), 0);
+          if (opts.length > 0) {
+            const optRemaining = opts.reduce((s, o) => s + (o.remaining ?? 0), 0);
+            const remaining = Math.min(optRemaining, capacity);
+            enriched.remaining = remaining;
+            enriched.capacity = capacity;
+            enriched.availabilityNote = remaining > 0 ? `${remaining}/${capacity} available` : 'Fully booked';
           }
         }
         infoWindowRef.current?.setContent(buildInfoWindowContent(enriched, dataset));
@@ -627,20 +662,7 @@ export function useMap() {
     };
   }, [calculateTransitRoute, focusOrigin, mapClickMode, mapReady, setDestinationMarker]);
 
-  useEffect(() => {
-    const now = new Date();
-    const startTime = new Date(now.getTime() + 5 * 60 * 1000).toISOString();
-    const endTime = new Date(now.getTime() + 65 * 60 * 1000).toISOString();
-
-    searchMobilityOptions({ city: 'Montreal', startTime, endTime })
-      .then((response) => {
-        mobilityOptionsRef.current = response.data;
-        setBackendAvailable(true);
-      })
-      .catch(() => {
-        setBackendAvailable(false);
-      });
-  }, []);
+  // mobilityOptionsRef is now refreshed inside loadRentalVehicles on every vehicle load.
 
   useEffect(() => {
     if (!mapReady) return;

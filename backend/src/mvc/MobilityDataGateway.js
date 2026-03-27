@@ -103,6 +103,14 @@ class MobilityDataGateway {
     return doc ? MobilityDataMapper.toMobilityOption(doc) : null;
   }
 
+  async saveMobilityOption(data) {
+    return MobilityOption.create(data);
+  }
+
+  async removeMobilityOption(id) {
+    return MobilityOption.remove(id);
+  }
+
   // ── Parking ───────────────────────────────────────────────────────────────
 
   async findParkingFacilities(city) {

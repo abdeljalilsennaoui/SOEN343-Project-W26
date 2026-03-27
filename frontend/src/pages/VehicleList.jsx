@@ -168,9 +168,12 @@ function VehicleList() {
       </div>
 
       {!isCityAdmin && !profileLoading && (
-        <div className="mb-6 p-4 rounded-md bg-yellow-500/15 border border-yellow-500/30">
-          <p className="text-yellow-400 text-sm">
-            You must be a City Administrator to manage vehicles.
+        <div className="mb-6 p-4 rounded-md bg-blue-500/10 border border-blue-500/30">
+          <p className="text-blue-400 text-sm">
+            This page shows all available vehicles.{' '}
+            {userProfile?.role === 'MOBILITY_PROVIDER' && (
+              <>To manage your own fleet, go to the <a href="/provider" className="underline font-medium hover:text-blue-300">Provider Dashboard</a>.</>
+            )}
           </p>
         </div>
       )}

@@ -370,17 +370,12 @@ export function useMap() {
       return;
     }
 
-    // Prefer the exact option matched to this vehicle (same ID); fall back to any available of same type.
-    const option =
-      mobilityOptionsRef.current.find((item) => item.optionId === location.id && item.availability) ??
-      mobilityOptionsRef.current.find((item) => item.type === location.type && item.availability);
-    if (!option) {
-      const anyOfType = mobilityOptionsRef.current.some((item) => item.type === location.type);
+    // Only book the exact vehicle that was clicked — never silently redirect to another.
+    const option = mobilityOptionsRef.current.find((item) => item.optionId === location.id);
+    if (!option || !option.availability) {
       setBookingStatus({
         ok: false,
-        message: anyOfType
-          ? 'This vehicle is fully booked right now.'
-          : 'No backend option matched. Make sure the backend is running.',
+        message: 'This vehicle is already booked. Please select an available one.',
       });
       return;
     }

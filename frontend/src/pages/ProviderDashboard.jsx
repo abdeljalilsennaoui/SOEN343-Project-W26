@@ -1,14 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   getProviderVehicles,
   addProviderVehicle,
   updateProviderVehicle,
   deactivateProviderVehicle,
 } from '../services/api';
+import { loadGoogleMaps } from '../services/googleApiAdapter';
 
 const CITIES = ['Montreal', 'Toronto', 'Vancouver'];
 const TYPES = ['CAR_SHARING', 'BIKE_SHARING', 'SCOOTER_SHARING'];
 const TYPE_LABELS = { CAR_SHARING: 'Car', BIKE_SHARING: 'Bike', SCOOTER_SHARING: 'Scooter' };
+
+// Default city-center coordinates — used as vehicle placement when provider doesn't specify exact spot
+const CITY_COORDS = {
+  Montreal:  { lat: 45.5017, lng: -73.5673 },
+  Toronto:   { lat: 43.6532, lng: -79.3832 },
+  Vancouver: { lat: 49.2827, lng: -123.1207 },
+};
 const STATUS_COLORS = {
   AVAILABLE: 'bg-green-500/15 text-green-400',
   RESERVED: 'bg-yellow-500/15 text-yellow-400',
@@ -18,13 +26,98 @@ const STATUS_COLORS = {
 
 const EMPTY_FORM = { city: 'Montreal', type: 'CAR_SHARING', pricePerMin: '', description: '' };
 
-function VehicleForm({ initial = EMPTY_FORM, onSubmit, onCancel, submitLabel }) {
+function LocationPicker({ city, onPick }) {
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markerRef = useRef(null);
+  const [picked, setPicked] = useState(null);
+
+  // Re-centre map when city changes
+  const centre = CITY_COORDS[city] ?? CITY_COORDS.Montreal;
+
+  const initMap = useCallback(async () => {
+    if (!mapRef.current) return;
+    await loadGoogleMaps();
+
+    if (!mapInstanceRef.current) {
+      mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
+        center: centre,
+        zoom: 13,
+        disableDefaultUI: true,
+        zoomControl: true,
+        styles: [{ elementType: 'geometry', stylers: [{ color: '#1e2330' }] },
+                 { elementType: 'labels.text.fill', stylers: [{ color: '#a0a8b8' }] },
+                 { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2d3348' }] },
+                 { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0d1117' }] }],
+      });
+
+      mapInstanceRef.current.addListener('click', (e) => {
+        const lat = e.latLng.lat();
+        const lng = e.latLng.lng();
+
+        if (markerRef.current) {
+          markerRef.current.setPosition({ lat, lng });
+        } else {
+          markerRef.current = new window.google.maps.Marker({
+            position: { lat, lng },
+            map: mapInstanceRef.current,
+            title: 'Vehicle location',
+            animation: window.google.maps.Animation.DROP,
+          });
+        }
+
+        setPicked({ lat, lng });
+        onPick({ lat, lng });
+      });
+    } else {
+      mapInstanceRef.current.setCenter(centre);
+      // Clear marker when city changes
+      if (markerRef.current) {
+        markerRef.current.setMap(null);
+        markerRef.current = null;
+      }
+      setPicked(null);
+      onPick(null);
+    }
+  }, [city]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { initMap(); }, [initMap]);
+
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-400 mb-1">
+        Vehicle location <span className="text-red-400">*</span>
+        <span className="ml-1 font-normal text-gray-500">— click the map to drop a pin</span>
+      </label>
+      <div ref={mapRef} className="w-full h-52 rounded-md overflow-hidden border border-gray-600" />
+      {picked ? (
+        <p className="mt-1 text-xs text-green-400">
+          Pin set: {picked.lat.toFixed(5)}, {picked.lng.toFixed(5)}
+        </p>
+      ) : (
+        <p className="mt-1 text-xs text-yellow-500">No pin set — click on the map above</p>
+      )}
+    </div>
+  );
+}
+
+function VehicleForm({ initial = EMPTY_FORM, onSubmit, onCancel, submitLabel, requireLocation = false }) {
   const [form, setForm] = useState(initial);
+  const [pickedCoords, setPickedCoords] = useState(
+    initial.lat && initial.lng ? { lat: initial.lat, lng: initial.lng } : null
+  );
+  const [locationError, setLocationError] = useState('');
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   function handleSubmit(e) {
     e.preventDefault();
-    onSubmit({ ...form, pricePerMin: parseFloat(form.pricePerMin) });
+    if (requireLocation && !pickedCoords) {
+      setLocationError('Please drop a pin on the map to set the vehicle location.');
+      return;
+    }
+    setLocationError('');
+    const coords = pickedCoords ?? CITY_COORDS[form.city] ?? CITY_COORDS.Montreal;
+    onSubmit({ ...form, pricePerMin: parseFloat(form.pricePerMin), ...coords });
   }
 
   return (
@@ -32,7 +125,7 @@ function VehicleForm({ initial = EMPTY_FORM, onSubmit, onCancel, submitLabel }) 
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1">City</label>
-          <select value={form.city} onChange={(e) => set('city', e.target.value)}
+          <select value={form.city} onChange={(e) => { set('city', e.target.value); setPickedCoords(null); }}
             className="w-full border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md px-3 py-2 text-sm transition-colors focus:border-gray-300 focus:outline-none">
             {CITIES.map((c) => <option key={c}>{c}</option>)}
           </select>
@@ -57,6 +150,12 @@ function VehicleForm({ initial = EMPTY_FORM, onSubmit, onCancel, submitLabel }) 
           placeholder="e.g. Clean compact car near downtown"
           className="w-full border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] placeholder-gray-500 rounded-md px-3 py-2 text-sm transition-colors focus:border-gray-300 focus:outline-none" />
       </div>
+
+      {requireLocation && (
+        <LocationPicker city={form.city} onPick={(coords) => { setPickedCoords(coords); setLocationError(''); }} />
+      )}
+      {locationError && <p className="text-xs text-red-400">{locationError}</p>}
+
       <div className="flex gap-2 pt-1">
         <button type="submit"
           className="flex-1 bg-gray-100 text-black py-2 rounded-md text-sm font-medium transition-colors hover:bg-white active:bg-gray-300">
@@ -151,7 +250,7 @@ export default function ProviderDashboard() {
       {showAddForm && (
         <div className="bg-[#13161d] border border-[#1e2330] rounded-lg p-6 mb-6">
           <h3 className="font-semibold text-[#e8eaf0] mb-4">Add New Vehicle</h3>
-          <VehicleForm onSubmit={handleAdd} onCancel={() => setShowAddForm(false)} submitLabel="Add Vehicle" />
+          <VehicleForm onSubmit={handleAdd} onCancel={() => setShowAddForm(false)} submitLabel="Add Vehicle" requireLocation />
         </div>
       )}
 

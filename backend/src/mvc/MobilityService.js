@@ -163,7 +163,19 @@ class MobilityService {
     if (!PROVIDER_TYPES.includes(type)) {
       throw ApiError.badRequest(`Invalid vehicle type: ${type}. Must be one of: ${PROVIDER_TYPES.join(', ')}`);
     }
-    return MobilityDataGateway.saveVehicle({ city, type, pricePerMin, providerId, lat, lng, description: description || '' });
+    const vehicle = await MobilityDataGateway.saveVehicle({ city, type, pricePerMin, providerId, lat, lng, description: description || '' });
+    // Create a matching mobilityOption so the vehicle appears in search and on the map.
+    // capacity=1 means one concurrent booking per provider-added vehicle.
+    await MobilityDataGateway.saveMobilityOption({
+      id: vehicle.id,
+      type,
+      city,
+      basePrice: pricePerMin,
+      capacity: 1,
+      description: description || `${type.replace('_', ' ')} in ${city}`,
+      providerId,
+    });
+    return vehicle;
   }
 
   /**
@@ -184,6 +196,8 @@ class MobilityService {
     if (!vehicle) throw ApiError.notFound(`Vehicle ${vehicleId} not found`);
     if (vehicle.providerId !== providerId) throw ApiError.forbidden('You do not own this vehicle');
     if (vehicle.status === VehicleStatus.OUT_OF_SERVICE) return vehicle;
+    // Remove the paired mobilityOption so it disappears from search.
+    await MobilityDataGateway.removeMobilityOption(vehicleId).catch(() => {});
     return MobilityDataGateway.deactivateVehicle(vehicleId);
   }
 

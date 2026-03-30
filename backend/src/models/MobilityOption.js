@@ -1,3 +1,4 @@
+const { v4: uuidv4 } = require('uuid');
 const db = require('../lib/firestore');
 
 const col = db.collection('mobilityOptions');
@@ -15,7 +16,20 @@ async function findAll({ city, type } = {}) {
   return snap.docs.map((d) => d.data());
 }
 
+async function create(data) {
+  const id = data.id || uuidv4();
+  const doc = { id, blockedPeriods: [], ...data };
+  await col.doc(id).set(doc);
+  return doc;
+}
+
+async function remove(id) {
+  await col.doc(id).delete();
+}
+
 module.exports = {
   findById,
   findAll,
+  create,
+  remove,
 };

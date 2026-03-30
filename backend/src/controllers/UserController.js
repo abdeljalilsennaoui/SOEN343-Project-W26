@@ -29,10 +29,13 @@ class UserController {
         return next(new ApiError('VALIDATION_ERROR', `role must be one of: ${SELF_REGISTER_ROLES.join(', ')}`, 400));
       }
 
-      // Idempotent: don't overwrite an existing doc (e.g. Google sign-in followed by email register)
       const existing = await User.findByUid(decoded.uid);
       if (existing) {
-        return res.json({ data: existing });
+        // Doc may have been auto-provisioned as COMMUTER by requireAuth before this
+        // call completed — always apply the explicitly chosen role.
+        const updated = { ...existing, role };
+        await User.upsert(decoded.uid, updated);
+        return res.json({ data: updated });
       }
 
       const newUser = User.buildNewUser(decoded.uid, decoded.email, decoded.name, role);

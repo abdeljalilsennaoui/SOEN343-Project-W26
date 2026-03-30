@@ -33,6 +33,15 @@ export function AuthProvider({ children }) {
     return signOut(auth);
   }
 
+  async function refreshRole() {
+    try {
+      const profile = await getMyProfile();
+      setUserRole(profile.data.role);
+    } catch {
+      // ignore
+    }
+  }
+
   // Fetch the Firestore role whenever a user is signed in.
   // This runs after every sign-in (email, Google, or page refresh).
   useEffect(() => {
@@ -55,7 +64,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ currentUser, userRole, loading, register, login, signInWithGoogle, logout }}>
+    <AuthContext.Provider value={{ currentUser, userRole, loading, register, login, signInWithGoogle, logout, refreshRole }}>
       {children}
     </AuthContext.Provider>
   );

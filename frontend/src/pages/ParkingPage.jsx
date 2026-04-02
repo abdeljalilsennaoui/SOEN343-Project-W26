@@ -47,7 +47,7 @@ export default function ParkingPage() {
     try {
       await reserveParkingSpot(spotId);
       setMessage('Spot reserved successfully.');
-      loadSpots(cityName);
+      setSpots((prev) => prev.map((s) => s.id === spotId ? { ...s, status: 'RESERVED' } : s));
     } catch (err) {
       setError(err.message || 'Failed to reserve spot');
     } finally {
@@ -62,7 +62,7 @@ export default function ParkingPage() {
     try {
       await releaseParkingSpot(spotId);
       setMessage('Spot released.');
-      loadSpots(cityName);
+      setSpots((prev) => prev.map((s) => s.id === spotId ? { ...s, status: 'AVAILABLE' } : s));
     } catch (err) {
       setError(err.message || 'Failed to release spot');
     } finally {

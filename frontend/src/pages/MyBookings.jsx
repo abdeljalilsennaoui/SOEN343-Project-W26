@@ -53,9 +53,17 @@ export default function MyBookings() {
 
   useEffect(() => { fetchBookings(); }, [fetchBookings]);
 
-  // Refresh when the tab/window regains focus (e.g. after completing a booking)
+  // Refresh when the tab/window regains focus — throttled to once per 60 s
+  // to avoid a Firestore read on every incidental click away.
   useEffect(() => {
-    const onFocus = () => fetchBookings();
+    const THROTTLE_MS = 60_000;
+    let lastFetch = Date.now(); // don't re-fetch immediately after mount fetch
+    const onFocus = () => {
+      const now = Date.now();
+      if (now - lastFetch < THROTTLE_MS) return;
+      lastFetch = now;
+      fetchBookings();
+    };
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, [fetchBookings]);

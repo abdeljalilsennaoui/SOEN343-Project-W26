@@ -211,13 +211,10 @@ class MobilityService {
    * List all vehicles owned by a specific provider.
    */
   async getProviderVehicles(providerId, role) {
-    const all = await MobilityDataGateway.findAllVehicles();
-
     if (role === UserRole.CITY_ADMINISTRATOR || role === UserRole.SYSTEM_ADMINISTRATOR) {
-      return all;
+      return MobilityDataGateway.findAllVehicles();
     }
-
-    return all.filter((v) => v.providerId === providerId);
+    return MobilityDataGateway.findAllVehicles({ providerId });
   }
 
   // ── Parking Access ────────────────────────────────────────────────────────

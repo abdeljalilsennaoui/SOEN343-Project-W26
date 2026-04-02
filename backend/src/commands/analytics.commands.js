@@ -16,8 +16,8 @@ class GetRentalAnalyticsCommand extends ICommand {
     this.receiver = receiver;
   }
 
-  async execute(_request) {
-    const data = await this.receiver.getRentalAnalytics();
+  async execute(request) {
+    const data = await this.receiver.getRentalAnalytics(request.userId, request.payload?.role);
     return MobilityResponse.ok(data);
   }
 }

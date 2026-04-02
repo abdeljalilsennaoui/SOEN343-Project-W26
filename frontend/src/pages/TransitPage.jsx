@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { getTransitSchedule } from '../services/api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const CITIES = ['Montreal'];
 const TYPE_ICONS = { BUS: '🚌', METRO: '🚇', TRAM: '🚋' };
@@ -72,14 +73,20 @@ export default function TransitPage() {
         <form onSubmit={handleSearchSchedule} className="flex flex-wrap gap-3 items-end">
           <div>
             <label className="block text-xs font-medium text-gray-400 mb-1">City</label>
-            <select value={city} onChange={(e) => setCity(e.target.value)}
-              className="border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md px-3 py-2 text-sm transition-colors focus:border-gray-300 focus:outline-none">
-              {CITIES.map((c) => <option key={c}>{c}</option>)}
-            </select>
+            <Select value={city} onValueChange={setCity}>
+              <SelectTrigger className="w-[180px] border-gray-600 bg-[#0d0f14] text-[#e8eaf0] focus-visible:border-gray-300 focus-visible:ring-0">
+                <SelectValue placeholder="Select city" />
+              </SelectTrigger>
+              <SelectContent>
+                {CITIES.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-400 mb-1">Line (optional)</label>
-            <input value={line} onChange={(e) => setLine(e.target.value)} placeholder="e.g. 24 or Green"
+            <label className="block text-xs font-medium text-gray-400 mb-1">Line</label>
+            <input value={line} onChange={(e) => setLine(e.target.value)} placeholder="e.g. 24 or 1"
               className="border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] placeholder-gray-500 rounded-md px-3 py-2 text-sm w-40 transition-colors focus:border-gray-300 focus:outline-none" />
           </div>
           <button type="submit" disabled={loadingSchedule}

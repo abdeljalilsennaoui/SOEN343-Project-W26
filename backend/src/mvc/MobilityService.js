@@ -92,7 +92,13 @@ class MobilityService {
     const totalPrice = PricingService.calculatePrice(option, startTime, endTime);
     const booking = await MobilityDataGateway.saveBooking({ userId, optionId, startTime, endTime, pickupLocation, totalPrice });
 
-    EventBus.emit('RESERVATION_CREATED', new ReservationCreatedEvent({ city: option.city, vehicleType: option.type, optionId, userId }));
+    EventBus.emit('RESERVATION_CREATED', new ReservationCreatedEvent({
+      city: option.city,
+      vehicleType: option.type,
+      optionId,
+      userId,
+      providerId: option.providerId || null,
+    }));
     return booking;
   }
 
@@ -289,8 +295,8 @@ class MobilityService {
 
   // ── Analytics ─────────────────────────────────────────────────────────────
 
-  async getRentalAnalytics() {
-    return MobilityDataGateway.getRentalAnalytics();
+  async getRentalAnalytics(userId, role) {
+    return MobilityDataGateway.getRentalAnalytics(userId, role);
   }
 
   async getGatewayAnalytics() {

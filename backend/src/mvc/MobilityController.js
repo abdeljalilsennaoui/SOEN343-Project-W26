@@ -151,7 +151,7 @@ class MobilityController {
   // ── Analytics ─────────────────────────────────────────────────────────────
 
   async getRentalAnalytics(req, res, next) {
-    await this._dispatch(MobilityRequest.TYPES.GET_RENTAL_ANALYTICS, req.uid, {}, res, next);
+    await this._dispatch(MobilityRequest.TYPES.GET_RENTAL_ANALYTICS, req.uid, { role: req.role }, res, next);
   }
 
   async getGatewayAnalytics(req, res, next) {

@@ -4,6 +4,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { registerUser } from '@/services/api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function getErrorMessage(code) {
   switch (code) {
@@ -37,6 +38,10 @@ function Register() {
 
   function handleChange(e) {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+
+  function handleRoleChange(value) {
+    setFormData((prev) => ({ ...prev, role: value }));
   }
 
   async function handleSubmit(e) {
@@ -201,16 +206,15 @@ function Register() {
           <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1.5">
             I am a…
           </label>
-          <select
-            id="role"
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-black-500/50 focus:border-black-500"
-          >
-            <option value="COMMUTER">Commuter — I want to book rides</option>
-            <option value="MOBILITY_PROVIDER">Mobility Provider — I manage vehicles</option>
-          </select>
+          <Select value={formData.role} onValueChange={handleRoleChange}>
+            <SelectTrigger id="role" className="w-full px-4 py-2.5 border-gray-300 rounded-md text-gray-900 bg-white focus-visible:ring-2 focus-visible:ring-black/50 focus-visible:border-black">
+              <SelectValue placeholder="Select a role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="COMMUTER">Commuter — I want to book rides</SelectItem>
+              <SelectItem value="MOBILITY_PROVIDER">Mobility Provider — I manage vehicles</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <button

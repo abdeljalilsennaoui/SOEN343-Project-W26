@@ -629,6 +629,10 @@ export function useMap() {
     if (!mapReady || !mapRef.current) return;
 
     const listener = mapRef.current.addListener('click', async (event) => {
+      if (event.placeId) {
+        event.stop();
+      }
+
       if (!mapClickMode) return;
 
       const latLng = {

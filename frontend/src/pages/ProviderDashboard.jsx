@@ -6,6 +6,7 @@ import {
   deactivateProviderVehicle,
 } from '../services/api';
 import { loadGoogleMaps } from '../services/googleApiAdapter';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const CITIES = ['Montreal', 'Toronto', 'Vancouver'];
 const TYPES = ['CAR_SHARING', 'BIKE_SHARING', 'SCOOTER_SHARING'];
@@ -125,17 +126,29 @@ function VehicleForm({ initial = EMPTY_FORM, onSubmit, onCancel, submitLabel, re
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1">City</label>
-          <select value={form.city} onChange={(e) => { set('city', e.target.value); setPickedCoords(null); }}
-            className="w-full border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md px-3 py-2 text-sm transition-colors focus:border-gray-300 focus:outline-none">
-            {CITIES.map((c) => <option key={c}>{c}</option>)}
-          </select>
+          <Select value={form.city} onValueChange={(value) => { set('city', value); setPickedCoords(null); }}>
+            <SelectTrigger className="w-full border-gray-600 bg-[#0d0f14] text-[#e8eaf0] focus-visible:border-gray-300 focus-visible:ring-0">
+              <SelectValue placeholder="Select city" />
+            </SelectTrigger>
+            <SelectContent>
+              {CITIES.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-400 mb-1">Type</label>
-          <select value={form.type} onChange={(e) => set('type', e.target.value)}
-            className="w-full border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md px-3 py-2 text-sm transition-colors focus:border-gray-300 focus:outline-none">
-            {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
-          </select>
+          <Select value={form.type} onValueChange={(value) => set('type', value)}>
+            <SelectTrigger className="w-full border-gray-600 bg-[#0d0f14] text-[#e8eaf0] focus-visible:border-gray-300 focus-visible:ring-0">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              {TYPES.map((t) => (
+                <SelectItem key={t} value={t}>{TYPE_LABELS[t]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
       <div>

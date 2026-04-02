@@ -75,18 +75,18 @@ export function buildInfoWindowContent(location, dataset) {
     const availColor = isFullyBooked ? '#ef4444' : '#22c55e';
 
     const bookBtn = isFullyBooked
-      ? `<button disabled style="flex:1;padding:10px 0;background:#374151;color:#9ca3af;border:none;border-radius:12px;font-size:13px;font-weight:600;opacity:0.5;cursor:not-allowed">Fully booked</button>`
-      : `<button onclick="window._mapBookClick('${location.type}',${location.lat},${location.lng})" style="flex:1;padding:10px 0;background:#374151;color:#fff;border:none;border-radius:12px;cursor:pointer;font-size:13px;font-weight:600">Book</button>`;
+      ? `<button disabled style="flex:1;padding:10px 0;background:#1f2937;color:#6b7280;border:1px solid #374151;border-radius:12px;font-size:13px;font-weight:600;opacity:0.7;cursor:not-allowed">Fully booked</button>`
+      : `<button onclick="window._mapBookClick('${location.type}',${location.lat},${location.lng})" style="flex:1;padding:10px 0;background:#374151;color:#f9fafb;border:1px solid #4b5563;border-radius:12px;cursor:pointer;font-size:13px;font-weight:600">Book</button>`;
 
     return `<div style="font-family:Inter,Arial,sans-serif;min-width:248px;padding:4px">
          <div style="display:flex;align-items:center;gap:8px">
            <div style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:12px;background:${c.bg};border:1px solid ${c.border};color:${c.text};font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase">${meta.label}</div>
            <div style="font-size:11px;font-weight:600;color:${availColor}">${availText}</div>
          </div>
-         <div style="margin-top:12px;font-size:16px;font-weight:700;color:#0f172a">${location.name}</div>
-         <div style="margin-top:6px;color:#475569;font-size:13px">$${location.pricePerMinute.toFixed(2)}/min</div>
+         <div style="margin-top:12px;font-size:16px;font-weight:700;color:#f3f4f6">${location.name}</div>
+         <div style="margin-top:6px;color:#9ca3af;font-size:13px">$${location.pricePerMinute.toFixed(2)}/min</div>
          <div style="display:flex;gap:8px;margin-top:14px">
-           <button onclick="window._mapRouteClick(${location.lat},${location.lng})" style="flex:1;padding:10px 0;background:#0f172a;color:#fff;border:none;border-radius:12px;cursor:pointer;font-size:13px;font-weight:600">Route</button>
+           <button onclick="window._mapRouteClick(${location.lat},${location.lng})" style="flex:1;padding:10px 0;background:#0b1220;color:#f9fafb;border:1px solid #374151;border-radius:12px;cursor:pointer;font-size:13px;font-weight:600">Route</button>
            ${bookBtn}
          </div>
        </div>`;
@@ -95,17 +95,17 @@ export function buildInfoWindowContent(location, dataset) {
   if (dataset === 'TRANSIT') {
     return `<div style="font-family:Inter,Arial,sans-serif;min-width:248px;padding:4px">
          <div style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:${c.bg};border:1px solid ${c.border};color:${c.text};font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase">${meta.label}</div>
-         <div style="margin-top:12px;font-size:16px;font-weight:700;color:#0f172a">${location.name}</div>
-         <div style="margin-top:6px;color:#475569;font-size:13px">Real transit station</div>
-         <div style="margin-top:4px;color:#64748b;font-size:12px;line-height:1.45">${location.notes ?? 'Transit stop in Montreal network.'}</div>
-         <button onclick="window._mapRouteClick(${location.lat},${location.lng})" style="margin-top:14px;width:100%;padding:10px 0;background:#0f172a;color:#fff;border:none;border-radius:12px;cursor:pointer;font-size:13px;font-weight:600">Get route</button>
+         <div style="margin-top:12px;font-size:16px;font-weight:700;color:#f3f4f6">${location.name}</div>
+         <div style="margin-top:6px;color:#9ca3af;font-size:13px">Real transit station</div>
+         <div style="margin-top:4px;color:#94a3b8;font-size:12px;line-height:1.45">${location.notes ?? 'Transit stop in Montreal network.'}</div>
+         <button onclick="window._mapRouteClick(${location.lat},${location.lng})" style="margin-top:14px;width:100%;padding:10px 0;background:#0b1220;color:#f9fafb;border:1px solid #374151;border-radius:12px;cursor:pointer;font-size:13px;font-weight:600">Get route</button>
        </div>`;
   }
 
   return `<div style="font-family:Inter,Arial,sans-serif;min-width:248px;padding:4px">
          <div style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:${c.bg};border:1px solid ${c.border};color:${c.text};font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase">Parking</div>
-         <div style="margin-top:12px;font-size:16px;font-weight:700;color:#0f172a">${location.facilityName}</div>
-         <div style="margin-top:6px;color:#475569;font-size:13px;line-height:1.5">${location.notes}</div>
-         <button onclick="window._mapRouteClick(${location.lat},${location.lng})" style="margin-top:14px;width:100%;padding:10px 0;background:#0f172a;color:#fff;border:none;border-radius:12px;cursor:pointer;font-size:13px;font-weight:600">Get route</button>
+         <div style="margin-top:12px;font-size:16px;font-weight:700;color:#f3f4f6">${location.facilityName}</div>
+         <div style="margin-top:6px;color:#9ca3af;font-size:13px;line-height:1.5">${location.notes}</div>
+         <button onclick="window._mapRouteClick(${location.lat},${location.lng})" style="margin-top:14px;width:100%;padding:10px 0;background:#0b1220;color:#f9fafb;border:1px solid #374151;border-radius:12px;cursor:pointer;font-size:13px;font-weight:600">Get route</button>
        </div>`;
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { searchNearbyParkings, reserveParkingSpot, releaseParkingSpot } from '../services/api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const CITIES = [
   { name: 'Montreal',  center: { lat: 45.5017, lng: -73.5673 } },
@@ -78,13 +79,18 @@ export default function ParkingPage() {
 
       <div className="flex items-center gap-3">
         <label className="text-sm font-medium text-gray-400">City:</label>
-        <select
-          value={cityName}
-          onChange={(e) => setCityName(e.target.value)}
-          className="border border-gray-600 bg-[#13161d] text-[#e8eaf0] rounded-md px-3 py-2 text-sm transition-colors focus:border-gray-300 focus:outline-none"
-        >
-          {CITIES.map((c) => <option key={c.name}>{c.name}</option>)}
-        </select>
+        <Select value={cityName} onValueChange={setCityName}>
+          <SelectTrigger className="w-[180px] border-gray-600 bg-[#13161d] text-[#e8eaf0] focus-visible:border-gray-300 focus-visible:ring-0">
+            <SelectValue placeholder="Select a city" />
+          </SelectTrigger>
+          <SelectContent>
+            {CITIES.map((c) => (
+              <SelectItem key={c.name} value={c.name}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {error   && <div className="bg-red-500/15 border border-red-500/30 text-red-400 rounded-md px-4 py-3 text-sm">{error}</div>}

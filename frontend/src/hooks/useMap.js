@@ -617,11 +617,9 @@ export function useMap() {
           const enriched = { ...location };
           if (dataset === 'RENTALS') {
             const opts = mobilityOptionsRef.current.filter((o) => o.type === location.type);
-            const vehicleCount = locations.filter((l) => l.type === location.type).length;
-            const capacity = vehicleCount || opts.reduce((s, o) => s + (o.capacity ?? 0), 0);
             if (opts.length > 0) {
-              const optRemaining = opts.reduce((s, o) => s + (o.remaining ?? 0), 0);
-              const remaining = Math.min(optRemaining, capacity);
+              const remaining = opts.reduce((s, o) => s + (o.remaining ?? 0), 0);
+              const capacity = opts.reduce((s, o) => s + (o.capacity ?? 1), 0);
               enriched.remaining = remaining;
               enriched.capacity = capacity;
               enriched.availabilityNote = remaining > 0 ? `${remaining}/${capacity} available` : 'Fully booked';

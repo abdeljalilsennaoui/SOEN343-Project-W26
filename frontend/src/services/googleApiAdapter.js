@@ -33,7 +33,7 @@ export function loadGoogleMaps() {
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=geometry,places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=geometry,places&v=weekly`;
     script.async = true;
     script.defer = true;
     script.onload = resolve;
@@ -156,72 +156,44 @@ export async function getRoute(origin, destination, options = {}) {
   });
 }
 
-export async function getNearbyTransitStations(map, center, radius = 1500) {
-  const service = new window.google.maps.places.PlacesService(map);
+export async function getNearbyTransitStations(_map, center, radius = 1500) {
+  const { Place } = window.google.maps.places;
 
-  return new Promise((resolve, reject) => {
-    const allStops = [];
+  let places;
+  try {
+    ({ places } = await Place.searchNearby({
+      fields: ['id', 'displayName', 'location', 'types', 'formattedAddress'],
+      locationRestriction: { center, radius },
+      includedTypes: ['transit_station', 'subway_station', 'bus_station', 'light_rail_station'],
+      maxResultCount: 20,
+    }));
+  } catch {
+    // Places API (New) not enabled on this key — transit sidebar will be empty
+    // but the visual transit layer on the map still works.
+    return [];
+  }
 
-    const pushStops = (results = []) => {
-      const mapped = results
-        .map((place) => {
-          const lat = place.geometry?.location?.lat?.();
-          const lng = place.geometry?.location?.lng?.();
-          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  const stops = (places ?? []).map((place) => {
+    const lat = place.location?.lat?.();
+    const lng = place.location?.lng?.();
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
-          const types = Array.isArray(place.types) ? place.types : [];
-          const transitType = types.includes('subway_station')
-            ? 'TRANSIT_METRO'
-            : types.includes('bus_station')
-              ? 'TRANSIT_BUS'
-              : 'TRANSIT_STATION';
+    const types = Array.isArray(place.types) ? place.types : [];
+    const transitType = types.includes('subway_station') || types.includes('light_rail_station')
+      ? 'TRANSIT_METRO'
+      : types.includes('bus_station')
+        ? 'TRANSIT_BUS'
+        : 'TRANSIT_STATION';
 
-          return {
-            id: place.place_id,
-            name: place.name || 'Transit stop',
-            lat,
-            lng,
-            type: transitType,
-            notes: place.vicinity || 'Google Transit station',
-          };
-        })
-        .filter(Boolean);
-
-      allStops.push(...mapped);
+    return {
+      id: place.id,
+      name: place.displayName || 'Transit stop',
+      lat,
+      lng,
+      type: transitType,
+      notes: place.formattedAddress || 'Google Transit station',
     };
+  }).filter(Boolean);
 
-    let pageCount = 0;
-    const maxPages = 3;
-
-    const request = {
-      location: center,
-      radius,
-      type: 'transit_station',
-    };
-
-    const callback = (results, status, pagination) => {
-      if (status !== window.google.maps.places.PlacesServiceStatus.OK || !Array.isArray(results)) {
-        if (allStops.length) {
-          const unique = Array.from(new Map(allStops.map((stop) => [stop.id, stop])).values());
-          resolve(unique);
-          return;
-        }
-        reject(new Error(`Transit places request failed: ${status}`));
-        return;
-      }
-
-      pushStops(results);
-      pageCount += 1;
-
-      if (pagination?.hasNextPage && pageCount < maxPages) {
-        setTimeout(() => pagination.nextPage(), 1200);
-        return;
-      }
-
-      const unique = Array.from(new Map(allStops.map((stop) => [stop.id, stop])).values());
-      resolve(unique);
-    };
-
-    service.nearbySearch(request, callback);
-  });
+  return Array.from(new Map(stops.map((s) => [s.id, s])).values());
 }

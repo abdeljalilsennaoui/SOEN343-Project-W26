@@ -34,6 +34,9 @@ class MobilityDataMapper {
       pickupLocation: doc.pickupLocation,
       totalPrice: doc.totalPrice,
       status: doc.status,
+      rideSharing: doc.rideSharing ?? false,
+      maxPassengers: doc.maxPassengers ?? 0,
+      passengers: doc.passengers ?? [],
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
     };

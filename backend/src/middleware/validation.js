@@ -32,9 +32,11 @@ const createDraftSchema = z
     startTime: z.string().datetime({ message: 'startTime must be a valid ISO 8601 datetime' }),
     endTime: z.string().datetime({ message: 'endTime must be a valid ISO 8601 datetime' }),
     pickupLocation: z.union([
-      z.object({ lat: z.number(), lng: z.number() }),
+      z.object({ lat: z.number(), lng: z.number(), address: z.string().optional() }),
       z.string().min(1, 'pickupLocation must be non-empty'),
     ]),
+    rideSharing: z.boolean().optional().default(false),
+    maxPassengers: z.number().int().min(0).max(3).optional().default(0),
   })
   .refine((d) => new Date(d.startTime) < new Date(d.endTime), {
     message: 'startTime must be before endTime',

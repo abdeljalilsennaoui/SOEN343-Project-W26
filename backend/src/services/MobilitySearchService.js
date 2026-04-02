@@ -12,20 +12,23 @@ const PricingService = require('./PricingService');
 async function search({ city, type, maxPrice, startTime, endTime }) {
   const candidates = await MobilityOption.findAll({ city, type });
 
-  const results = await Promise.all(
-    candidates.map(async (option) => {
-      const availability = await AvailabilityService.isAvailable(option, startTime, endTime);
-      const estimatedPrice = PricingService.calculatePrice(option, startTime, endTime);
-      return {
-        optionId: option.id,
-        type: option.type,
-        city: option.city,
-        availability,
-        estimatedPrice,
-        shortDescription: option.description,
-      };
-    })
-  );
+  // Single Firestore read for all options instead of one per option
+  const availabilityMap = await AvailabilityService.checkAvailabilityBatch(candidates, startTime, endTime);
+
+  const results = candidates.map((option) => {
+    const avail = availabilityMap.get(option.id) ?? { available: false, remaining: 0, capacity: option.capacity ?? 1 };
+    const estimatedPrice = PricingService.calculatePrice(option, startTime, endTime);
+    return {
+      optionId: option.id,
+      type: option.type,
+      city: option.city,
+      availability: avail.available,
+      remaining: avail.remaining,
+      capacity: avail.capacity,
+      estimatedPrice,
+      shortDescription: option.description,
+    };
+  });
 
   // Filter by maxPrice if provided
   const filtered =

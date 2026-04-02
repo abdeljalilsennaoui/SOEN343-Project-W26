@@ -15,7 +15,7 @@
 │   CommuterUI          ProviderDashboardView  AdminDashboardView│
 │   CommuterWebView     ProviderWebView        AnalyticsReportView│
 │   (BookingFlow, VehicleList, ParkingPage, TransitPage,      │
-│    MyBookings, Register, Login,                             │
+│    MyBookings, RideShare, Register, Login,                  │
 │    ProviderDashboard, VehicleForm)                          │
 └───────────────────┬─────────────────────────────────────────┘
                     │ HTTP request / JSON response
@@ -96,6 +96,9 @@ View displays result to user
 │ + getNearbyStops(req, res, next)                     │
 │ + getRentalAnalytics(req, res, next)                 │
 │ + getGatewayAnalytics(req, res, next)                │
+│ + listRideShares(req, res, next)                     │
+│ + joinRide(req, res, next)                           │
+│ + leaveRide(req, res, next)                          │
 │─────────────────────────────────────────────────────│
 │  No business logic. Creates MobilityRequest,         │
 │  delegates to MobilityRequestHandler, passes         │
@@ -143,7 +146,8 @@ View displays result to user
 │        GET_AVAILABLE_SPOTS,                          │
 │        RESERVE_PARKING_SPOT, RELEASE_PARKING_SPOT,   │
 │        GET_TRANSIT_SCHEDULE, GET_NEARBY_STOPS,       │
-│        GET_RENTAL_ANALYTICS, GET_GATEWAY_ANALYTICS   │
+│        GET_RENTAL_ANALYTICS, GET_GATEWAY_ANALYTICS,  │
+│        LIST_RIDE_SHARES, JOIN_RIDE, LEAVE_RIDE        │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -214,6 +218,11 @@ View displays result to user
 │ + getRentalAnalytics()                               │
 │ + getGatewayAnalytics()                              │
 │─────────────────────────────────────────────────────│
+│  Ride Sharing:                                       │
+│ + getActiveRideShares()                              │
+│ + joinRide(bookingId, userId)                        │
+│ + leaveRide(bookingId, userId)                       │
+│─────────────────────────────────────────────────────│
 │  Uses: MobilityDataGateway, BookingStateMachine,     │
 │        IPaymentGateway (Strategy), EventBus          │
 └─────────────────────────────────────────────────────┘
@@ -243,7 +252,12 @@ View displays result to user
 │ endTime: string       │   ┌───────────────────────┐
 │ totalPrice: number    │   │<<entity>>             │
 │ status: BookingStatus │   │  PaymentReceipt       │
-│ pickupLocation: any   │   │───────────────────────│
+│ pickupLocation:       │   │───────────────────────│
+│   { lat, lng,         │
+│     address? }        │
+│ rideSharing: boolean  │
+│ maxPassengers: number │
+│ passengers: string[]  │
 └───────────────────────┘   │ id: string            │
                             │ bookingId: string     │
                             │ amount: number        │
@@ -258,7 +272,8 @@ View displays result to user
 │ city: string          │   │ city: string          │
 │ type: TripMode        │   │ name: string          │
 │ basePrice: number     │   │ address: string       │
-│ description: string   │   └───────────────────────┘
+│ capacity: number      │   └───────────────────────┘
+│ description: string   │
 │ blockedPeriods: []    │
 └───────────────────────┘   ┌───────────────────────┐
                             │<<entity>>             │
@@ -317,6 +332,9 @@ View displays result to user
 │ + getRentalAnalytics()                               │
 │ + getGatewayAnalytics()                              │
 │─────────────────────────────────────────────────────│
+│  Ride Sharing:                                       │
+│ + findActiveRideShares()                             │
+│─────────────────────────────────────────────────────│
 │  Delegates to: MobilityDataMapper + Firestore models │
 └─────────────────────────────────────────────────────┘
 ```
@@ -337,6 +355,50 @@ View displays result to user
 └─────────────────────────────────────────────────────┘
 ```
 
+### MobilitySearchService
+```
+┌─────────────────────────────────────────────────────┐
+│          MobilitySearchService                       │
+│  (backend/src/services/MobilitySearchService.js)     │
+│─────────────────────────────────────────────────────│
+│ + search({ city, type?, maxPrice?,                   │
+│            startTime, endTime })                     │
+│       : Promise<MobilityOptionViewModel[]>           │
+│─────────────────────────────────────────────────────│
+│  Each result: { optionId, type, city,                │
+│                 availability: boolean,               │
+│                 remaining: number,                   │
+│                 capacity: number,                    │
+│                 estimatedPrice, shortDescription }   │
+│─────────────────────────────────────────────────────│
+│  Uses checkAvailabilityBatch() — single Firestore    │
+│  read for all options (replaces N parallel reads).   │
+│  Sorted: available first, then price ascending.      │
+└─────────────────────────────────────────────────────┘
+```
+
+### AvailabilityService
+```
+┌─────────────────────────────────────────────────────┐
+│           AvailabilityService                        │
+│  (backend/src/services/AvailabilityService.js)       │
+│─────────────────────────────────────────────────────│
+│ + isAvailable(option, start, end, excludeId?)        │
+│       : Promise<boolean>                             │
+│ + checkAvailability(option, start, end, excludeId?)  │
+│       : Promise<{ available, remaining,              │
+│                   capacity, conflicting }>            │
+│ + checkAvailabilityBatch(options[], start, end)      │
+│       : Promise<Map<optionId, { available,           │
+│                                 remaining,           │
+│                                 capacity }>>          │
+│─────────────────────────────────────────────────────│
+│  Counts DRAFT + ACTIVE bookings in the time window   │
+│  against each option's capacity. Single Firestore    │
+│  read for the batch variant.                         │
+└─────────────────────────────────────────────────────┘
+```
+
 ### SUMMSDatabase
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -348,6 +410,12 @@ View displays result to user
 │  bookings           mobilityOptions                  │
 │  parkingFacilities  parkingSpots                     │
 │  paymentReceipts    analytics                        │
+│                                                      │
+│  bookings schema includes:                           │
+│    rideSharing: boolean                              │
+│    maxPassengers: number (0–3)                       │
+│    passengers: string[]  (userIds)                   │
+│    pickupLocation: { lat, lng, address? }            │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -367,9 +435,21 @@ View displays result to user
 │ TransitPage.jsx       │   │ getMyBookings()        │
 │ VehicleList.jsx       │   │ searchMobilityOptions()│
 │ Map.jsx               │   │ reserveParkingSpot()   │
-│ Register.jsx          │   │ getTransitSchedule()   │
-│ Login.jsx             │   └───────────────────────┘
-└───────────────────────┘
+│ RideShare.jsx         │   │ getTransitSchedule()   │
+│ Register.jsx          │   │ listRideShares()       │
+│ Login.jsx             │   │ joinRide()             │
+│                       │   │ leaveRide()            │
+└───────────────────────┘   └───────────────────────┘
+
+┌───────────────────────────────────────────────────┐
+│           Map Support Components                   │
+│───────────────────────────────────────────────────│
+│ useMap.js           — map state + booking logic    │
+│ useMapUi.js         — marker icons + InfoWindow    │
+│ RideSharingModal.jsx — CAR_SHARING booking modal   │
+│                       (rideSharing toggle,         │
+│                        maxPassengers, address)     │
+└───────────────────────────────────────────────────┘
 
 ┌───────────────────────┐   ┌───────────────────────┐
 │ CommuterPresenter     │   │  CommuterViewModel     │
@@ -440,7 +520,8 @@ View displays result to user
 │  Subscribes to: RESERVATION_CREATED, BOOKING_CONFIRMED│
 │                 PAYMENT_PROCESSED, VEHICLE_RETURNED,  │
 │                 PARKING_RESERVED, PARKING_RELEASED,   │
-│                 TRANSIT_QUERY, GATEWAY_CALL           │
+│                 TRANSIT_QUERY, GATEWAY_CALL,          │
+│                 RIDE_JOINED                           │
 │  Persists to:   AnalyticsReport (Firestore)          │
 │  Fire-and-forget: .catch(() => {}) — never blocks    │
 └─────────────────────────────────────────────────────┘

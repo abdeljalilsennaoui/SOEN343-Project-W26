@@ -157,6 +157,24 @@ class MobilityController {
   async getGatewayAnalytics(req, res, next) {
     await this._dispatch(MobilityRequest.TYPES.GET_GATEWAY_ANALYTICS, req.uid, {}, res, next);
   }
+
+  // ── Ride Sharing ──────────────────────────────────────────────────────────
+
+  async listRideShares(req, res, next) {
+    await this._dispatch(MobilityRequest.TYPES.LIST_RIDE_SHARES, req.uid, {}, res, next);
+  }
+
+  async joinRide(req, res, next) {
+    await this._dispatch(MobilityRequest.TYPES.JOIN_RIDE, req.uid, {
+      bookingId: req.params.bookingId,
+    }, res, next);
+  }
+
+  async leaveRide(req, res, next) {
+    await this._dispatch(MobilityRequest.TYPES.LEAVE_RIDE, req.uid, {
+      bookingId: req.params.bookingId,
+    }, res, next);
+  }
 }
 
 module.exports = new MobilityController();

@@ -4,7 +4,7 @@ const db = require('../lib/firestore');
 
 const col = db.collection('bookings');
 
-async function create({ userId, optionId, startTime, endTime, pickupLocation, totalPrice }) {
+async function create({ userId, optionId, startTime, endTime, pickupLocation, totalPrice, rideSharing = false, maxPassengers = 0, passengers = [] }) {
   const now = new Date().toISOString();
   const id = uuidv4();
   const booking = {
@@ -16,11 +16,19 @@ async function create({ userId, optionId, startTime, endTime, pickupLocation, to
     pickupLocation,
     totalPrice,
     status: BookingStatus.DRAFT,
+    rideSharing,
+    maxPassengers,
+    passengers,
     createdAt: now,
     updatedAt: now,
   };
   await col.doc(id).set(booking);
   return booking;
+}
+
+async function findActiveRideShares() {
+  const snap = await col.where('status', '==', BookingStatus.ACTIVE).get();
+  return snap.docs.map((d) => d.data()).filter((b) => b.rideSharing === true);
 }
 
 async function findById(id) {
@@ -60,5 +68,6 @@ module.exports = {
   findByUserId,
   findAll,
   findActiveAndDraft,
+  findActiveRideShares,
   update,
 };

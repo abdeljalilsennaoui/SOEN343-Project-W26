@@ -36,4 +36,24 @@ router.get(
   mobilityController.getMyBookings.bind(mobilityController),
 );
 
+router.get(
+  '/bookings/rideshare',
+  requireAuth,
+  mobilityController.listRideShares.bind(mobilityController),
+);
+
+router.post(
+  '/bookings/rideshare/:bookingId/join',
+  requireAuth,
+  requireRole(UserRole.COMMUTER),
+  mobilityController.joinRide.bind(mobilityController),
+);
+
+router.post(
+  '/bookings/rideshare/:bookingId/leave',
+  requireAuth,
+  requireRole(UserRole.COMMUTER),
+  mobilityController.leaveRide.bind(mobilityController),
+);
+
 module.exports = router;

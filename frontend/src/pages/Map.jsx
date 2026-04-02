@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { geocodeAddress } from '../services/googleApiAdapter';
 import { useMap } from '../hooks/useMap';
+import RideSharingModal from '../components/RideSharingModal';
 import { DEFAULT_PARKING_RADIUS_METERS } from '@/utils/constants';
 
 export default function MapPage() {
@@ -36,6 +37,9 @@ export default function MapPage() {
     setBookingStatus,
     calculateTransitRoute,
     handleRouteToLocation,
+    pendingBooking,
+    confirmPendingBooking,
+    cancelPendingBooking,
   } = useMap();
 
   const routeSummary = useMemo(() => {
@@ -496,6 +500,13 @@ export default function MapPage() {
           )}
         </div>
       </div>
+      {pendingBooking && (
+        <RideSharingModal
+          option={pendingBooking.option}
+          onConfirm={confirmPendingBooking}
+          onCancel={cancelPendingBooking}
+        />
+      )}
     </div>
   );
 }

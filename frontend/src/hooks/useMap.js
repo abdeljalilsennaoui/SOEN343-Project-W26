@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RENTALS } from '../data/mockLocations';
-import { createBookingDraft, getMyBookings, getVehicles, searchMobilityOptions } from '../services/api';
+import { confirmBooking, createBookingDraft, getMyBookings, getVehicles, joinRide, leaveRide, listRideShares, searchMobilityOptions } from '../services/api';
 import { auth } from '../lib/firebase';
 import { geocodeAddress, getNearbyTransitStations, getRoute, initMap, loadGoogleMaps, reverseGeocodeCoordinates } from '../services/googleApiAdapter';
 import { MAP_THEME, MONTREAL, TYPE_META } from '../components/map/mapConfig';
 import { searchNearbyParkings } from '../services/api';
-import { buildInfoWindowContent, createMarkerIcon } from '@/hooks/useMapUi';
+import { buildInfoWindowContent, createMarkerIcon, createRideShareMarkerIcon } from '@/hooks/useMapUi';
 import haversineMeters from '@/utils/math';
 import normalizeRouteSteps from '@/utils/normalizeRouteSteps';
 import { DEFAULT_PARKING_RADIUS_METERS, MAP_CONTAINER_ID } from '@/utils/constants';
@@ -18,6 +18,7 @@ const RENTAL_FALLBACK_BY_TYPE = RENTALS.reduce((acc, rental) => {
 
 function mapVehiclesToRentalLocations(vehicles = []) {
   const typeIndex = {};
+  const positionIndex = {};
 
   return vehicles
     .map((vehicle, index) => {
@@ -27,10 +28,18 @@ function mapVehiclesToRentalLocations(vehicles = []) {
       typeIndex[type] = slot + 1;
       const fallback = fallbackPool[slot % fallbackPool.length] ?? RENTALS[index % RENTALS.length];
 
-      const lat = Number(vehicle.lat ?? fallback?.lat);
-      const lng = Number(vehicle.lng ?? fallback?.lng);
+      const baseLat = Number(vehicle.lat ?? fallback?.lat);
+      const baseLng = Number(vehicle.lng ?? fallback?.lng);
 
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      if (!Number.isFinite(baseLat) || !Number.isFinite(baseLng)) return null;
+
+      // Offset duplicate coordinates so stacked markers are all individually visible.
+      // 0.005° per step (~550 m) is wide enough to appear as distinct pins at zoom 12–13.
+      const posKey = `${baseLat.toFixed(4)},${baseLng.toFixed(4)}`;
+      const posCount = positionIndex[posKey] ?? 0;
+      positionIndex[posKey] = posCount + 1;
+      const lat = baseLat + posCount * 0.005;
+      const lng = baseLng + posCount * 0.005;
 
       return {
         id: vehicle.id ?? `vehicle-${index}`,
@@ -63,7 +72,9 @@ export function useMap() {
   const parkingSpotsRef = useRef([]);
   const parkingCacheRef = useRef(new Map());
   const parkingLoadingRef = useRef(false);
+  const rideSharesRef = useRef([]);
 
+  const [pendingBooking, setPendingBooking] = useState(null); // { location, option }
   const [dataset, setDataset] = useState('RENTALS');
   const [addressInput, setAddressInput] = useState('');
   const [destinationInput, setDestinationInput] = useState('');
@@ -81,10 +92,14 @@ export function useMap() {
   const [transitStops, setTransitStops] = useState([]);
   const [parkingSpots, setParkingSpots] = useState([]);
   const [parkingRadiusMeters, setParkingRadiusMeters] = useState(DEFAULT_PARKING_RADIUS_METERS);
+  const [rideShares, setRideShares] = useState([]);
   const [routeActive, setRouteActive] = useState(false);
   const [activeBookings, setActiveBookings] = useState([]);
 
-  const activeLocations = dataset === 'RENTALS' ? rentals : dataset === 'TRANSIT' ? transitStops : parkingSpots;
+  const activeLocations = useMemo(
+    () => (dataset === 'RENTALS' ? [...rentals, ...rideShares] : dataset === 'TRANSIT' ? transitStops : parkingSpots),
+    [dataset, rentals, rideShares, transitStops, parkingSpots],
+  );
 
 
   const getLocationByCoords = useCallback((lat, lng) => {
@@ -124,6 +139,61 @@ export function useMap() {
     rentalsRef.current = RENTALS;
     setRentals(RENTALS);
   }, []);
+
+  const loadRideShares = useCallback(async () => {
+    try {
+      const res = await listRideShares();
+      const rides = (res.data || []).map((booking) => {
+        const pickup = booking.pickupLocation;
+        if (!pickup || typeof pickup !== 'object') return null;
+        const lat = Number(pickup.lat);
+        const lng = Number(pickup.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        const seatsLeft = (booking.maxPassengers ?? 0) - (booking.passengers?.length ?? 0);
+        return {
+          id: booking.id,
+          type: 'RIDE_SHARE',
+          lat,
+          lng,
+          name: 'Shared Ride',
+          pickupAddress: pickup.address || null,
+          seatsLeft,
+          maxPassengers: booking.maxPassengers ?? 0,
+          passengers: booking.passengers ?? [],
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+          driverId: booking.userId,
+          isDriver: booking.userId === auth.currentUser?.uid,
+          isPassenger: (booking.passengers ?? []).includes(auth.currentUser?.uid),
+        };
+      }).filter(Boolean);
+      rideSharesRef.current = rides;
+      setRideShares(rides);
+    } catch {
+      rideSharesRef.current = [];
+      setRideShares([]);
+    }
+  }, []);
+
+  const joinRideOnMap = useCallback(async (bookingId) => {
+    try {
+      await joinRide(bookingId);
+      await loadRideShares();
+      setBookingStatus({ ok: true, message: 'You joined the shared ride! Head to the pickup point.' });
+    } catch (err) {
+      setBookingStatus({ ok: false, message: err.message || 'Failed to join ride.' });
+    }
+  }, [loadRideShares]);
+
+  const leaveRideOnMap = useCallback(async (bookingId) => {
+    try {
+      await leaveRide(bookingId);
+      await loadRideShares();
+      setBookingStatus({ ok: true, message: 'You left the shared ride.' });
+    } catch (err) {
+      setBookingStatus({ ok: false, message: err.message || 'Failed to leave ride.' });
+    }
+  }, [loadRideShares]);
 
   const loadTransitStops = useCallback(async (latLng = originRef.current, radius = 3500) => {
     if (!mapRef.current || !window.google?.maps?.places) return;
@@ -196,7 +266,8 @@ export function useMap() {
   useEffect(() => {
     if (!mapReady || dataset !== 'RENTALS') return;
     loadRentalVehicles();
-  }, [dataset, loadRentalVehicles, mapReady]);
+    loadRideShares();
+  }, [dataset, loadRentalVehicles, loadRideShares, mapReady]);
 
   // Load active bookings on mount and when focus returns
   useEffect(() => {
@@ -216,7 +287,7 @@ export function useMap() {
       const now = Date.now();
       if (now - lastRefresh < THROTTLE_MS) return;
       lastRefresh = now;
-      if (dataset === 'RENTALS') loadRentalVehicles();
+      if (dataset === 'RENTALS') { loadRentalVehicles(); loadRideShares(); }
       if (dataset === 'PARKING') loadParkingSpots(originRef.current, { force: true });
       loadActiveBookings();
     };
@@ -231,7 +302,7 @@ export function useMap() {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', refresh);
     };
-  }, [dataset, loadParkingSpots, loadRentalVehicles, loadActiveBookings, mapReady]);
+  }, [dataset, loadParkingSpots, loadRentalVehicles, loadRideShares, loadActiveBookings, mapReady]);
 
 
   const clearMarkers = useCallback(() => {
@@ -386,6 +457,12 @@ export function useMap() {
       return;
     }
 
+    // For CAR_SHARING, show ride-sharing modal before creating the draft.
+    if (option.type === 'CAR_SHARING') {
+      setPendingBooking({ location, option });
+      return;
+    }
+
     const now = new Date();
     const startTime = new Date(now.getTime() + 5 * 60 * 1000).toISOString();
     const endTime = new Date(now.getTime() + 65 * 60 * 1000).toISOString();
@@ -395,16 +472,61 @@ export function useMap() {
         lat: location.lat,
         lng: location.lng,
       });
+      await loadRentalVehicles();
       setBookingStatus({
         ok: true,
         message: `Draft created — ID: ${response.data.id} · $${response.data.totalPrice.toFixed(2)} for 60 min`,
       });
-      // Refresh availability immediately so markers and badges reflect the new booking.
-      loadRentalVehicles();
     } catch (error) {
       setBookingStatus({ ok: false, message: error.message });
     }
   }, [loadRentalVehicles]);
+
+  const confirmPendingBooking = useCallback(async (rideSharing, maxPassengers, pickupAddress) => {
+    if (!pendingBooking) return;
+    const { location, option } = pendingBooking;
+    const now = new Date();
+    const startTime = new Date(now.getTime() + 5 * 60 * 1000).toISOString();
+    const endTime = new Date(now.getTime() + 65 * 60 * 1000).toISOString();
+    const pickupLocation = (rideSharing && pickupAddress)
+      ? { lat: location.lat, lng: location.lng, address: pickupAddress }
+      : { lat: location.lat, lng: location.lng };
+    try {
+      const draftRes = await createBookingDraft(
+        option.optionId,
+        startTime,
+        endTime,
+        pickupLocation,
+        rideSharing,
+        rideSharing ? maxPassengers : 0,
+      );
+      const draft = draftRes.data;
+      // Auto-confirm so the booking is immediately ACTIVE (and visible on the ride share page).
+      const confirmed = await confirmBooking(draft.id, 'tok_demo');
+      const booking = confirmed.data.booking;
+      // Refresh map data before closing modal so the user sees fresh availability immediately.
+      await loadRentalVehicles();
+      loadRideShares();
+      loadActiveBookings();
+      setPendingBooking(null);
+      setBookingStatus({
+        ok: true,
+        message: `Booked — ID: ${booking.id.slice(0, 8)} · $${booking.totalPrice?.toFixed(2)} · ${booking.status}${rideSharing ? ' · Ride sharing on' : ''}`,
+      });
+    } catch (error) {
+      setPendingBooking(null);
+      setBookingStatus({ ok: false, message: error.message });
+    }
+  }, [pendingBooking, loadRentalVehicles, loadRideShares, loadActiveBookings]);
+
+  useEffect(() => {
+    window._mapJoinClick = async (bookingId) => { await joinRideOnMap(bookingId); };
+    window._mapLeaveClick = async (bookingId) => { await leaveRideOnMap(bookingId); };
+    return () => {
+      delete window._mapJoinClick;
+      delete window._mapLeaveClick;
+    };
+  }, [joinRideOnMap, leaveRideOnMap]);
 
   const placeMarkers = useCallback((locations) => {
     clearMarkers();
@@ -441,21 +563,23 @@ export function useMap() {
         return;
       }
 
-      // Grey out if: vehicle status is not AVAILABLE, OR its specific option is fully booked.
-      // Vehicle ID === option ID (seeded 1:1), so we look up the exact option for this pin.
-      const specificOption = mobilityOptionsRef.current.find((o) => o.optionId === location.id);
-      const isBookedOut = specificOption ? !specificOption.availability : false;
-      const isUnavailable = (location.status && location.status !== 'AVAILABLE') || isBookedOut;
-      const markerColor = isUnavailable ? '#4b5563' : (TYPE_META[location.type]?.markerColor ?? TYPE_META.PARKING.markerColor);
-
       const markerOptions = {
         position: { lat: location.lat, lng: location.lng },
         map: mapRef.current,
-        title: location.type === "PARKING" ? location.facilityName : location.name,
-        opacity: isUnavailable ? 0.4 : 1,
+        opacity: 1,
       };
 
-      if (location.type === 'PARKING') {
+      if (location.type === 'RIDE_SHARE') {
+        markerOptions.title = 'Shared Ride';
+        markerOptions.icon = createRideShareMarkerIcon(location.seatsLeft);
+        markerOptions.opacity = location.seatsLeft <= 0 ? 0.5 : 1;
+        markerOptions.zIndex = 50;
+      } else if (location.type === 'PARKING') {
+        markerOptions.title = location.facilityName;
+        const specificOption = mobilityOptionsRef.current.find((o) => o.optionId === location.id);
+        const isBookedOut = specificOption ? !specificOption.availability : false;
+        const isUnavailable = (location.status && location.status !== 'AVAILABLE') || isBookedOut;
+        markerOptions.opacity = isUnavailable ? 0.4 : 1;
         markerOptions.icon = {
           path: 'M -6,-10 L 6,-10 L 6,10 L -6,10 Z',
           fillColor: '#8b7ea8',
@@ -473,6 +597,12 @@ export function useMap() {
         };
         markerOptions.zIndex = 10;
       } else {
+        markerOptions.title = location.name;
+        const specificOption = mobilityOptionsRef.current.find((o) => o.optionId === location.id);
+        const isBookedOut = specificOption ? !specificOption.availability : false;
+        const isUnavailable = (location.status && location.status !== 'AVAILABLE') || isBookedOut;
+        const markerColor = isUnavailable ? '#4b5563' : (TYPE_META[location.type]?.markerColor ?? TYPE_META.PARKING.markerColor);
+        markerOptions.opacity = isUnavailable ? 0.4 : 1;
         markerOptions.icon = createMarkerIcon(markerColor);
       }
 
@@ -480,23 +610,25 @@ export function useMap() {
 
       marker.addListener('click', () => {
         setSelectedLocation(location);
-        // Enrich badge with type-level totals (e.g. "2/3 bikes available").
-        // Use vehicle pin count as the denominator — works correctly whether the DB
-        // has capacity=1 (migrated) or the old high-capacity options (pre-migration).
-        const enriched = { ...location };
-        if (dataset === 'RENTALS') {
-          const opts = mobilityOptionsRef.current.filter((o) => o.type === location.type);
-          const vehicleCount = rentalsRef.current.filter((v) => v.type === location.type).length;
-          const capacity = vehicleCount || opts.reduce((s, o) => s + (o.capacity ?? 0), 0);
-          if (opts.length > 0) {
-            const optRemaining = opts.reduce((s, o) => s + (o.remaining ?? 0), 0);
-            const remaining = Math.min(optRemaining, capacity);
-            enriched.remaining = remaining;
-            enriched.capacity = capacity;
-            enriched.availabilityNote = remaining > 0 ? `${remaining}/${capacity} available` : 'Fully booked';
+
+        if (location.type === 'RIDE_SHARE') {
+          infoWindowRef.current?.setContent(buildInfoWindowContent(location, 'RIDE_SHARE'));
+        } else {
+          const enriched = { ...location };
+          if (dataset === 'RENTALS') {
+            const opts = mobilityOptionsRef.current.filter((o) => o.type === location.type);
+            const vehicleCount = locations.filter((l) => l.type === location.type).length;
+            const capacity = vehicleCount || opts.reduce((s, o) => s + (o.capacity ?? 0), 0);
+            if (opts.length > 0) {
+              const optRemaining = opts.reduce((s, o) => s + (o.remaining ?? 0), 0);
+              const remaining = Math.min(optRemaining, capacity);
+              enriched.remaining = remaining;
+              enriched.capacity = capacity;
+              enriched.availabilityNote = remaining > 0 ? `${remaining}/${capacity} available` : 'Fully booked';
+            }
           }
+          infoWindowRef.current?.setContent(buildInfoWindowContent(enriched, dataset));
         }
-        infoWindowRef.current?.setContent(buildInfoWindowContent(enriched, dataset));
         infoWindowRef.current?.open(mapRef.current, marker);
       });
 
@@ -742,5 +874,8 @@ export function useMap() {
     calculateTransitRoute,
     handleRouteToLocation,
     handleBooking,
+    pendingBooking,
+    confirmPendingBooking,
+    cancelPendingBooking: () => setPendingBooking(null),
   };
 }

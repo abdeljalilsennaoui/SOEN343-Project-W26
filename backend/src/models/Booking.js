@@ -27,11 +27,8 @@ async function create({ userId, optionId, startTime, endTime, pickupLocation, to
 }
 
 async function findActiveRideShares() {
-  const snap = await col
-    .where('status', '==', BookingStatus.ACTIVE)
-    .where('rideSharing', '==', true)
-    .get();
-  return snap.docs.map((d) => d.data());
+  const snap = await col.where('status', '==', BookingStatus.ACTIVE).get();
+  return snap.docs.map((d) => d.data()).filter((b) => b.rideSharing === true);
 }
 
 async function findById(id) {

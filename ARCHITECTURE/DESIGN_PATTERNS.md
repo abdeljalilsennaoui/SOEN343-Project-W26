@@ -101,6 +101,18 @@ module.exports = MobilityRequest;          // callers instantiate per use
 
 Events emitted by `MobilityService`: `RESERVATION_CREATED`, `BOOKING_CONFIRMED`, `PAYMENT_PROCESSED`, `VEHICLE_RETURNED`, `PARKING_RESERVED`, `PARKING_RELEASED`, `TRANSIT_QUERY`, `GATEWAY_CALL`, `RIDE_JOINED`.
 
+| Event | Emitted when | Key metadata |
+|---|---|---|
+| `RESERVATION_CREATED` | Draft booking saved | city, vehicleType, optionId, userId |
+| `BOOKING_CONFIRMED` | Payment succeeds, booking → ACTIVE | city, bookingId, type, amount |
+| `PAYMENT_PROCESSED` | Payment gateway responds (success) | city, bookingId, amount |
+| `VEHICLE_RETURNED` | Booking → COMPLETE | city, bookingId |
+| `PARKING_RESERVED` | Spot reserved | city, spotId |
+| `PARKING_RELEASED` | Spot released | city, spotId |
+| `TRANSIT_QUERY` | Transit schedule/stops queried | city, line |
+| `GATEWAY_CALL` | Any external gateway called | service, operation, success |
+| `RIDE_JOINED` | Passenger joins a shared ride | bookingId, passengerId |
+
 ```js
 // Publisher (MobilityService)
 EventBus.emit('RESERVATION_CREATED', new ReservationCreatedEvent({ ... }));
@@ -474,6 +486,22 @@ Adding a `NotificationVisitor` = one new class + two lines in `AnalyticsListener
 
 ---
 
+## Visitor — Concrete Elements
+
+| Event class | File | Emitted by |
+|---|---|---|
+| `ReservationCreatedEvent` | `analytics/events/` | `createReservation` |
+| `BookingConfirmedEvent` | `analytics/events/` | `processPayment` |
+| `PaymentProcessedEvent` | `analytics/events/` | `processPayment` |
+| `VehicleReturnedEvent` | `analytics/events/` | `returnVehicle` |
+| `ParkingReservedEvent` | `analytics/events/` | `reserveParkingSpot` |
+| `ParkingReleasedEvent` | `analytics/events/` | `releaseParkingSpot` |
+| `TransitQueryEvent` | `analytics/events/` | `getTransitSchedule` / `getNearbyStops` |
+| `GatewayCallEvent` | `analytics/events/` | Any gateway factory call |
+| `RideJoinedEvent` | `analytics/events/` | `joinRide` |
+
+---
+
 ## GRASP Principles
 
 | Principle | Applied in SUMMS |
@@ -497,3 +525,33 @@ Adding a `NotificationVisitor` = one new class + two lines in `AnalyticsListener
 | **Liskov Substitution** | `MockPaymentGateway` fully satisfies `IPaymentGateway`. `PeakHourPricingStrategy` fully satisfies `IPricingStrategy`. Any concrete visitor fully satisfies `IAnalyticsVisitor`. |
 | **Interface Segregation** | All interfaces are narrow: `IPaymentGateway` (2 methods), `ITransitGateway` (2 methods), `IPricingStrategy` (1 method), `ICommand` (1 method). |
 | **Dependency Inversion** | `MobilityService` depends on gateway abstractions. `PricingContext` depends on `IPricingStrategy`. `MobilityRequestHandler` depends on `ICommand`. |
+
+---
+
+## Implementation Notes (Ride Sharing + Availability)
+
+### Ride Sharing data model
+Bookings have three additional fields: `rideSharing: boolean`, `maxPassengers: number` (0–3), `passengers: string[]` (Firebase UIDs). These are additive — existing bookings default to `rideSharing: false, maxPassengers: 0, passengers: []` via `?? fallback` in `MobilityDataMapper.toBooking`.
+
+`pickupLocation` is stored as `{ lat, lng, address? }`. The `address` field is optional and human-readable. Zod validation (`createDraftSchema`) explicitly permits it — without the field in the schema Zod strips unknown keys by default.
+
+### Availability API contract
+`GET /mobility/options/search` returns per-option availability as three fields:
+- `availability: boolean` — whether at least one slot is free
+- `remaining: number` — slots not yet taken in the requested window
+- `capacity: number` — total capacity of this option (always 1 for vehicle options)
+
+`MobilitySearchService` uses `AvailabilityService.checkAvailabilityBatch` — a single Firestore read for all DRAFT+ACTIVE bookings, then in-memory filtering per option. This replaced N parallel `isAvailable` calls (one per option).
+
+### Firestore compound query avoidance
+`Booking.findActiveRideShares` originally queried `.where('status','==','ACTIVE').where('rideSharing','==',true)`. This compound equality query on two different fields requires a composite index in Firestore (not auto-created). It was replaced with a single-field query on `status` and an in-memory filter on `rideSharing`, eliminating the index dependency.
+
+### RideShare page — dual-section layout
+`RideShare.jsx` fetches two data sources in parallel:
+1. `GET /bookings/rideshare` — rides available to join (excludes full rides, excludes own ride)
+2. `GET /bookings` — own bookings, filtered for `ACTIVE + rideSharing === true`
+
+The driver's own ride is displayed in a "Your active ride" section regardless of seat availability. Other users' rides appear in "Available rides". This ensures the driver always sees their ride even after it fills up, while passengers only see joinable rides.
+
+### Map availability refresh timing
+After a booking is confirmed on the map (`confirmPendingBooking`), `loadRentalVehicles()` is **awaited** before the booking modal closes. This guarantees `mobilityOptionsRef` holds fresh availability data (including the newly consumed slot) before the user can interact with map markers again, preventing a race condition where stale `X/X available` counts appeared in InfoWindows.

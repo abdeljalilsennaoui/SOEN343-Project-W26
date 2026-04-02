@@ -4,6 +4,69 @@ import { useMap } from '../hooks/useMap';
 import RideSharingModal from '../components/RideSharingModal';
 import { DEFAULT_PARKING_RADIUS_METERS } from '@/utils/constants';
 
+function PaymentModal({ draft, onPay, onCancel }) {
+  const [form, setForm] = useState({ cardName: '', cardNumber: '', expiry: '', cvv: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.cardName || !form.cardNumber || !form.expiry || !form.cvv) {
+      setError('All fields are required.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await onPay('tok_demo');
+    } catch (err) {
+      setError(err.message || 'Payment failed.');
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-lg border border-[#1e2330] bg-[#13161d] p-6 shadow-xl space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-[#e8eaf0]">Payment</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            Total: <strong className="text-[#e8eaf0]">${draft.totalPrice?.toFixed(2)}</strong> for 60 min
+          </p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <input value={form.cardName} onChange={(e) => set('cardName', e.target.value)}
+            placeholder="Cardholder name"
+            className="w-full border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] placeholder-gray-600 rounded-md px-3 py-2 text-sm focus:border-gray-300 focus:outline-none" />
+          <input value={form.cardNumber} onChange={(e) => set('cardNumber', e.target.value.replace(/\D/g, '').slice(0, 16))}
+            placeholder="Card number"
+            className="w-full border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] placeholder-gray-600 rounded-md px-3 py-2 text-sm focus:border-gray-300 focus:outline-none" />
+          <div className="flex gap-3">
+            <input value={form.expiry} onChange={(e) => set('expiry', e.target.value)}
+              placeholder="MM/YY"
+              className="flex-1 border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] placeholder-gray-600 rounded-md px-3 py-2 text-sm focus:border-gray-300 focus:outline-none" />
+            <input value={form.cvv} onChange={(e) => set('cvv', e.target.value.replace(/\D/g, '').slice(0, 4))}
+              placeholder="CVV"
+              className="w-20 border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] placeholder-gray-600 rounded-md px-3 py-2 text-sm focus:border-gray-300 focus:outline-none" />
+          </div>
+          {error && <p className="text-red-400 text-xs">{error}</p>}
+          <div className="flex gap-3 pt-1">
+            <button type="submit" disabled={loading}
+              className="flex-1 bg-green-600 text-white py-2 rounded-md text-sm font-medium transition-colors hover:bg-green-500 disabled:opacity-50">
+              {loading ? 'Processing…' : `Pay $${draft.totalPrice?.toFixed(2)}`}
+            </button>
+            <button type="button" onClick={onCancel} disabled={loading}
+              className="flex-1 border border-gray-500 text-gray-300 py-2 rounded-md text-sm transition-colors hover:border-gray-400 hover:text-white disabled:opacity-40">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function MapPage() {
   const [activeTab, setActiveTab] = useState('route');
 
@@ -40,6 +103,9 @@ export default function MapPage() {
     pendingBooking,
     confirmPendingBooking,
     cancelPendingBooking,
+    pendingPayment,
+    confirmPayment,
+    cancelPayment,
   } = useMap();
 
   const routeSummary = useMemo(() => {
@@ -505,6 +571,13 @@ export default function MapPage() {
           option={pendingBooking.option}
           onConfirm={confirmPendingBooking}
           onCancel={cancelPendingBooking}
+        />
+      )}
+      {pendingPayment && (
+        <PaymentModal
+          draft={pendingPayment.draft}
+          onPay={confirmPayment}
+          onCancel={cancelPayment}
         />
       )}
     </div>

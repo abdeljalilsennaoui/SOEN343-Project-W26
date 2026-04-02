@@ -170,7 +170,7 @@ function Analytics() {
             </div>
           </section>
 
-          <section>
+          {!isProvider && <section>
             <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Service Gateway Analytics</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -251,7 +251,7 @@ function Analytics() {
                 )}
               </StatCard>
             </div>
-          </section>
+          </section>}
         </div>
       )}
     </div>

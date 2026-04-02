@@ -17,6 +17,7 @@ import ProviderDashboard from '@/pages/ProviderDashboard';
 import ParkingPage from '@/pages/ParkingPage';
 import TransitPage from '@/pages/TransitPage';
 import MyBookings from '@/pages/MyBookings';
+import RideShare from '@/pages/RideShare';
 
 const PROVIDER_ROLES = ['MOBILITY_PROVIDER', 'CITY_ADMINISTRATOR', 'SYSTEM_ADMINISTRATOR'];
 const ANALYTICS_ROLES = ['MOBILITY_PROVIDER', 'CITY_ADMINISTRATOR', 'SYSTEM_ADMINISTRATOR'];
@@ -42,6 +43,7 @@ function ProtectedAppRoutes() {
         <Route path="/transit" element={<PageLayout><TransitPage /></PageLayout>} />
         <Route path="/provider" element={<RoleGuard allowed={PROVIDER_ROLES}><PageLayout><ProviderDashboard /></PageLayout></RoleGuard>} />
         <Route path="/bookings" element={<PageLayout><MyBookings /></PageLayout>} />
+        <Route path="/rideshare" element={<PageLayout><RideShare /></PageLayout>} />
       </Routes>
     </div>
   );

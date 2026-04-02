@@ -14,6 +14,9 @@ const {
   ConfirmBookingCommand,
   CompleteBookingCommand,
   GetMyBookingsCommand,
+  ListRideSharesCommand,
+  JoinRideCommand,
+  LeaveRideCommand,
 } = require('./booking.commands');
 const {
   GetProviderVehiclesCommand,
@@ -64,6 +67,11 @@ const registry = new Map([
   ['GET_RENTAL_ANALYTICS',    new GetRentalAnalyticsCommand(MobilityService)],
   ['GET_GATEWAY_ANALYTICS',   new GetGatewayAnalyticsCommand(MobilityService)],
   ['GET_NEARBY_PARKINGS',     new GetNearbyParkingsCommand(MobilityService)],
+
+  // Ride sharing
+  ['LIST_RIDE_SHARES',        new ListRideSharesCommand(MobilityService)],
+  ['JOIN_RIDE',               new JoinRideCommand(MobilityService)],
+  ['LEAVE_RIDE',              new LeaveRideCommand(MobilityService)],
 ]);
 
 module.exports = registry;

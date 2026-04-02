@@ -35,6 +35,8 @@ const createDraftSchema = z
       z.object({ lat: z.number(), lng: z.number() }),
       z.string().min(1, 'pickupLocation must be non-empty'),
     ]),
+    rideSharing: z.boolean().optional().default(false),
+    maxPassengers: z.number().int().min(0).max(3).optional().default(0),
   })
   .refine((d) => new Date(d.startTime) < new Date(d.endTime), {
     message: 'startTime must be before endTime',

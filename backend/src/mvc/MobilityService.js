@@ -30,6 +30,7 @@ const ParkingReservedEvent = require('../analytics/events/ParkingReservedEvent')
 const ParkingReleasedEvent = require('../analytics/events/ParkingReleasedEvent');
 const TransitQueryEvent = require('../analytics/events/TransitQueryEvent');
 const GatewayCallEvent = require('../analytics/events/GatewayCallEvent');
+const RideJoinedEvent = require('../analytics/events/RideJoinedEvent');
 
 const paymentGateway = createPaymentGateway();
 const transitGateway = createTransitGateway();
@@ -80,9 +81,13 @@ class MobilityService {
   /**
    * Create a DRAFT booking (reservation) for a commuter.
    */
-  async createReservation({ userId, optionId, startTime, endTime, pickupLocation }) {
+  async createReservation({ userId, optionId, startTime, endTime, pickupLocation, rideSharing = false, maxPassengers = 0 }) {
     const option = await MobilityDataGateway.findMobilityOption(optionId);
     if (!option) throw new ApiError('OPTION_NOT_FOUND', `Mobility option ${optionId} not found`, 404);
+
+    if (rideSharing && option.type !== TripMode.CAR_SHARING) {
+      throw ApiError.badRequest('Ride sharing is only available for CAR_SHARING bookings.');
+    }
 
     const avail = await AvailabilityService.checkAvailability(option, startTime, endTime);
     if (!avail.available) {
@@ -90,7 +95,11 @@ class MobilityService {
     }
 
     const totalPrice = PricingService.calculatePrice(option, startTime, endTime);
-    const booking = await MobilityDataGateway.saveBooking({ userId, optionId, startTime, endTime, pickupLocation, totalPrice });
+    const clampedMax = Math.min(Math.max(0, maxPassengers), 3);
+    const booking = await MobilityDataGateway.saveBooking({
+      userId, optionId, startTime, endTime, pickupLocation, totalPrice,
+      rideSharing, maxPassengers: clampedMax, passengers: [],
+    });
 
     EventBus.emit('RESERVATION_CREATED', new ReservationCreatedEvent({ city: option.city, vehicleType: option.type, optionId, userId }));
     return booking;
@@ -292,6 +301,39 @@ class MobilityService {
 
   async getGatewayAnalytics() {
     return MobilityDataGateway.getGatewayAnalytics();
+  }
+
+  // ── Ride Sharing ──────────────────────────────────────────────────────────
+
+  async getActiveRideShares() {
+    return MobilityDataGateway.findActiveRideShares();
+  }
+
+  async joinRide(bookingId, userId) {
+    const booking = await MobilityDataGateway.findBooking(bookingId);
+    if (!booking) throw new ApiError('BOOKING_NOT_FOUND', `Booking ${bookingId} not found`, 404);
+    if (booking.status !== BookingStatus.ACTIVE) throw ApiError.badRequest('This ride is not currently active.');
+    if (!booking.rideSharing) throw ApiError.badRequest('This booking does not offer ride sharing.');
+    if (booking.userId === userId) throw ApiError.forbidden('Driver cannot join their own ride.');
+    if (booking.passengers.includes(userId)) throw ApiError.conflict('You have already joined this ride.');
+    if (booking.passengers.length >= booking.maxPassengers) throw ApiError.conflict('This ride is full.');
+
+    const updated = await MobilityDataGateway.updateBooking(bookingId, {
+      passengers: [...booking.passengers, userId],
+    });
+
+    EventBus.emit('RIDE_JOINED', new RideJoinedEvent({ bookingId, passengerId: userId }));
+    return updated;
+  }
+
+  async leaveRide(bookingId, userId) {
+    const booking = await MobilityDataGateway.findBooking(bookingId);
+    if (!booking) throw new ApiError('BOOKING_NOT_FOUND', `Booking ${bookingId} not found`, 404);
+    if (!booking.passengers.includes(userId)) throw ApiError.badRequest('You are not a passenger on this ride.');
+
+    return MobilityDataGateway.updateBooking(bookingId, {
+      passengers: booking.passengers.filter((id) => id !== userId),
+    });
   }
 }
 

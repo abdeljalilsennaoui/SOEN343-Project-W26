@@ -74,9 +74,54 @@ class GetMyBookingsCommand extends ICommand {
   }
 }
 
+// ── ListRideSharesCommand ────────────────────────────────────────────────────
+
+class ListRideSharesCommand extends ICommand {
+  constructor(receiver) {
+    super();
+    this.receiver = receiver;
+  }
+
+  async execute() {
+    const data = await this.receiver.getActiveRideShares();
+    return MobilityResponse.ok(data);
+  }
+}
+
+// ── JoinRideCommand ──────────────────────────────────────────────────────────
+
+class JoinRideCommand extends ICommand {
+  constructor(receiver) {
+    super();
+    this.receiver = receiver;
+  }
+
+  async execute(request) {
+    const data = await this.receiver.joinRide(request.payload.bookingId, request.userId);
+    return MobilityResponse.ok(data);
+  }
+}
+
+// ── LeaveRideCommand ─────────────────────────────────────────────────────────
+
+class LeaveRideCommand extends ICommand {
+  constructor(receiver) {
+    super();
+    this.receiver = receiver;
+  }
+
+  async execute(request) {
+    const data = await this.receiver.leaveRide(request.payload.bookingId, request.userId);
+    return MobilityResponse.ok(data);
+  }
+}
+
 module.exports = {
   CreateBookingDraftCommand,
   ConfirmBookingCommand,
   CompleteBookingCommand,
   GetMyBookingsCommand,
+  ListRideSharesCommand,
+  JoinRideCommand,
+  LeaveRideCommand,
 };

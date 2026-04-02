@@ -3,19 +3,45 @@ import { useAuth } from '../contexts/AuthContext';
 import { useState } from 'react';
 import { MenuIcon } from 'lucide-react';
 
-const navItems = [
-  { to: '/', label: 'Home' },
-  { to: '/vehicles', label: 'Vehicles' },
-  { to: '/book', label: 'Book' },
-  { to: '/bookings', label: 'My Bookings' },
-  { to: '/rideshare', label: 'Ride Share' },
-  { to: '/map', label: 'Map' },
-  { to: '/old-map', label: 'Old Map' },
-  { to: '/parking', label: 'Parking' },
-  { to: '/transit', label: 'Transit' },
-];
-
-const ANALYTICS_ROLES = ['MOBILITY_PROVIDER', 'CITY_ADMINISTRATOR', 'SYSTEM_ADMINISTRATOR'];
+const NAV_ITEMS_BY_ROLE = {
+  COMMUTER: [
+    { to: '/', label: 'Home' },
+    { to: '/book', label: 'Book' },
+    { to: '/bookings', label: 'My Bookings' },
+    { to: '/rideshare', label: 'Ride Share' },
+    { to: '/map', label: 'Map' },
+    { to: '/parking', label: 'Parking' },
+    { to: '/transit', label: 'Transit' },
+  ],
+  MOBILITY_PROVIDER: [
+    { to: '/', label: 'Home' },
+    { to: '/provider', label: 'My Fleet' },
+    { to: '/analytics', label: 'Analytics' },
+    { to: '/map', label: 'Map' },
+  ],
+  CITY_ADMINISTRATOR: [
+    { to: '/', label: 'Home' },
+    { to: '/vehicles', label: 'Vehicles' },
+    { to: '/provider', label: 'Provider Mgmt' },
+    { to: '/analytics', label: 'Analytics' },
+    { to: '/map', label: 'Map' },
+    { to: '/parking', label: 'Parking' },
+    { to: '/transit', label: 'Transit' },
+  ],
+  SYSTEM_ADMINISTRATOR: [
+    { to: '/', label: 'Home' },
+    { to: '/vehicles', label: 'Vehicles' },
+    { to: '/book', label: 'Book' },
+    { to: '/bookings', label: 'My Bookings' },
+    { to: '/rideshare', label: 'Ride Share' },
+    { to: '/map', label: 'Map' },
+    { to: '/old-map', label: 'Old Map' },
+    { to: '/parking', label: 'Parking' },
+    { to: '/transit', label: 'Transit' },
+    { to: '/analytics', label: 'Analytics' },
+    { to: '/provider', label: 'Provider' },
+  ],
+};
 
 const ROLE_LABELS = {
   COMMUTER: 'Commuter',
@@ -35,10 +61,7 @@ function Navbar() {
   const { currentUser, userRole, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  const isProvider =
-    userRole === 'MOBILITY_PROVIDER' ||
-    userRole === 'CITY_ADMINISTRATOR' ||
-    userRole === 'SYSTEM_ADMINISTRATOR';
+  const navItems = NAV_ITEMS_BY_ROLE[userRole] ?? NAV_ITEMS_BY_ROLE.COMMUTER;
 
   const getNavClassName = ({ isActive }) =>
     `block w-full rounded-md p-3 text-sm font-medium transition ${
@@ -61,20 +84,6 @@ function Navbar() {
               </NavLink>
             </li>
           ))}
-          {ANALYTICS_ROLES.includes(userRole) && (
-            <li>
-              <NavLink to="/analytics" className={getNavClassName}>
-                Analytics
-              </NavLink>
-            </li>
-          )}
-          {isProvider && (
-            <li>
-              <NavLink to="/provider" className={getNavClassName}>
-                Provider
-              </NavLink>
-            </li>
-          )}
         </ul>
         <div className="flex items-center gap-2">
           {userRole && (
@@ -102,7 +111,6 @@ function Navbar() {
       </nav>
       {isOpen && (
         <div className="mt-3 md:hidden rounded-md border border-[#1e2330] bg-[#0d0f14] p-3 space-y-2">
-
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -113,25 +121,6 @@ function Navbar() {
               {item.label}
             </NavLink>
           ))}
-
-          {ANALYTICS_ROLES.includes(userRole) && (
-            <NavLink
-              to="/analytics"
-              className={getNavClassName}
-              onClick={() => setIsOpen(false)}
-            >
-              Analytics
-            </NavLink>
-          )}
-          {isProvider && (
-            <NavLink
-              to="/provider"
-              className={getNavClassName}
-              onClick={() => setIsOpen(false)}
-            >
-              Provider
-            </NavLink>
-          )}
           <div className="pt-3 border-t border-[#1e2330] text-sm text-gray-300">
             {currentUser?.displayName || currentUser?.email}
           </div>

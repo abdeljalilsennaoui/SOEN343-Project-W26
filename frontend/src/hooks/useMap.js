@@ -204,12 +204,18 @@ export function useMap() {
     loadActiveBookings();
   }, [loadActiveBookings, mapReady]);
 
-  // Refresh data when the page regains focus — covers both tab switching
-  // (visibilitychange) and in-app navigation back to the map (window focus).
+  // Refresh data when the page regains focus — throttled to once per 30 s
+  // to avoid excessive Firestore reads on repeated tab switches.
   useEffect(() => {
     if (!mapReady) return;
 
+    const THROTTLE_MS = 30_000;
+    let lastRefresh = 0;
+
     const refresh = () => {
+      const now = Date.now();
+      if (now - lastRefresh < THROTTLE_MS) return;
+      lastRefresh = now;
       if (dataset === 'RENTALS') loadRentalVehicles();
       if (dataset === 'PARKING') loadParkingSpots(originRef.current, { force: true });
       loadActiveBookings();

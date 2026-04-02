@@ -30,9 +30,15 @@ async function findSpotById(id) {
 
 async function getAvailableSpots(city) {
   const facilities = await findAllFacilities(city);
-  const facilityIds = new Set(facilities.map((f) => f.id));
-  const snap = await spotsCol.where('status', '==', ParkingStatus.AVAILABLE).get();
-  return snap.docs.map((d) => d.data()).filter((s) => facilityIds.has(s.facilityId));
+  if (facilities.length === 0) return [];
+  const facilityIds = facilities.map((f) => f.id);
+  // 'in' query limits to only spots belonging to this city's facilities
+  // instead of reading every spot across all cities.
+  const snap = await spotsCol
+    .where('facilityId', 'in', facilityIds)
+    .where('status', '==', ParkingStatus.AVAILABLE)
+    .get();
+  return snap.docs.map((d) => d.data());
 }
 
 async function reserveSpot(spotId) {

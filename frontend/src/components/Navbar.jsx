@@ -8,6 +8,7 @@ const navItems = [
   { to: '/vehicles', label: 'Vehicles' },
   { to: '/book', label: 'Book' },
   { to: '/bookings', label: 'My Bookings' },
+  { to: '/rideshare', label: 'Ride Share' },
   { to: '/map', label: 'Map' },
   { to: '/old-map', label: 'Old Map' },
   { to: '/parking', label: 'Parking' },

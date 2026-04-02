@@ -56,6 +56,11 @@ MobilityRequest.TYPES = Object.freeze({
   // Analytics
   GET_RENTAL_ANALYTICS:  'GET_RENTAL_ANALYTICS',
   GET_GATEWAY_ANALYTICS: 'GET_GATEWAY_ANALYTICS',
+
+  // Ride sharing
+  LIST_RIDE_SHARES: 'LIST_RIDE_SHARES',
+  JOIN_RIDE:        'JOIN_RIDE',
+  LEAVE_RIDE:       'LEAVE_RIDE',
 });
 
 module.exports = MobilityRequest;

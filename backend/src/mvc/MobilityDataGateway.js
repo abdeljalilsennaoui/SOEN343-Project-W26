@@ -43,6 +43,13 @@ class MobilityDataGateway {
     return docs.map(MobilityDataMapper.toBooking);
   }
 
+  async findActiveRideShares() {
+    const docs = await Booking.findActiveRideShares();
+    return docs
+      .map(MobilityDataMapper.toBooking)
+      .filter((b) => b.passengers.length < b.maxPassengers);
+  }
+
   async saveBooking(data) {
     return Booking.create(data);
   }

@@ -139,22 +139,30 @@ function SearchStep({ onResults }) {
 function SelectStep({ results, searchParams, onSelect }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [rideSharing, setRideSharing] = useState(false);
+  const [maxPassengers, setMaxPassengers] = useState(1);
+  const [pickingId, setPickingId] = useState(null);
 
   async function handlePick(option) {
     setError('');
     setLoading(true);
+    setPickingId(option.optionId);
+    const isCarSharing = option.type === 'CAR_SHARING';
     try {
       const res = await createBookingDraft(
         option.optionId,
         searchParams.startTime,
         searchParams.endTime,
         searchParams.city,
+        isCarSharing ? rideSharing : false,
+        isCarSharing && rideSharing ? maxPassengers : 0,
       );
       onSelect(option, res.data);
     } catch (err) {
       setError(err.message || 'Could not create booking draft');
     } finally {
       setLoading(false);
+      setPickingId(null);
     }
   }
 
@@ -168,24 +176,53 @@ function SelectStep({ results, searchParams, onSelect }) {
       {error && <p className="text-red-400 text-sm">{error}</p>}
       {results.map((opt) => (
         <div key={opt.optionId}
-          className="border border-[#1e2330] rounded-lg p-4 flex items-center justify-between bg-[#13161d]">
-          <div>
-            <p className="font-medium text-[#e8eaf0]">{TYPE_LABELS[opt.type] || opt.type}</p>
-            <p className="text-sm text-gray-500">{opt.shortDescription}</p>
-            <p className="text-sm text-gray-400 mt-1">
-              <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mr-2 ${
-                opt.availability ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
-              }`}>{opt.availability
-                ? `${opt.remaining ?? '?'}/${opt.capacity ?? '?'} available`
-                : 'Fully booked'
-              }</span>
-              Est. <strong>${opt.estimatedPrice?.toFixed(2)}</strong>
-            </p>
+          className="border border-[#1e2330] rounded-lg p-4 bg-[#13161d] space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-[#e8eaf0]">{TYPE_LABELS[opt.type] || opt.type}</p>
+              <p className="text-sm text-gray-500">{opt.shortDescription}</p>
+              <p className="text-sm text-gray-400 mt-1">
+                <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mr-2 ${
+                  opt.availability ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'
+                }`}>{opt.availability
+                  ? `${opt.remaining ?? '?'}/${opt.capacity ?? '?'} available`
+                  : 'Fully booked'
+                }</span>
+                Est. <strong>${opt.estimatedPrice?.toFixed(2)}</strong>
+              </p>
+            </div>
+            <button onClick={() => handlePick(opt)} disabled={loading || !opt.availability}
+              className="bg-gray-100 text-black px-4 py-2 rounded-md text-sm font-medium transition-colors hover:bg-white active:bg-gray-300 disabled:opacity-40 shrink-0">
+              {pickingId === opt.optionId ? '…' : 'Select'}
+            </button>
           </div>
-          <button onClick={() => handlePick(opt)} disabled={loading || !opt.availability}
-            className="bg-gray-100 text-black px-4 py-2 rounded-md text-sm font-medium transition-colors hover:bg-white active:bg-gray-300 disabled:opacity-40">
-            Select
-          </button>
+
+          {opt.type === 'CAR_SHARING' && opt.availability && (
+            <div className="border-t border-[#1e2330] pt-3 space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rideSharing}
+                  onChange={(e) => setRideSharing(e.target.checked)}
+                  className="w-4 h-4 accent-gray-300"
+                />
+                <span className="text-sm text-gray-300">Offer ride sharing (carpooling)</span>
+              </label>
+              {rideSharing && (
+                <div className="flex items-center gap-3 pl-6">
+                  <label className="text-sm text-gray-400">Max passengers:</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={3}
+                    value={maxPassengers}
+                    onChange={(e) => setMaxPassengers(Number(e.target.value))}
+                    className="w-16 border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md px-2 py-1 text-sm text-center focus:border-gray-300 focus:outline-none"
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ))}
     </div>

@@ -80,11 +80,23 @@ export function searchMobilityOptions(params = {}) {
   return request(`/mobility/options/search?${query}`);
 }
 
-export function createBookingDraft(optionId, startTime, endTime, pickupLocation) {
+export function createBookingDraft(optionId, startTime, endTime, pickupLocation, rideSharing = false, maxPassengers = 0) {
   return request('/bookings/draft', {
     method: 'POST',
-    body: JSON.stringify({ optionId, startTime, endTime, pickupLocation }),
+    body: JSON.stringify({ optionId, startTime, endTime, pickupLocation, rideSharing, maxPassengers }),
   });
+}
+
+export function listRideShares() {
+  return request('/bookings/rideshare');
+}
+
+export function joinRide(bookingId) {
+  return request(`/bookings/rideshare/${bookingId}/join`, { method: 'POST' });
+}
+
+export function leaveRide(bookingId) {
+  return request(`/bookings/rideshare/${bookingId}/leave`, { method: 'POST' });
 }
 
 export function confirmBooking(draftId, token) {

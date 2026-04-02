@@ -35,7 +35,7 @@ View (React)
 | 5 | State | Behavioural | `lib/states/BookingState.js`, `lib/BookingStateMachine.js` | Enforce booking lifecycle transitions in one place |
 | 6 | Strategy | Behavioural | `strategies/pricing/`, `services/PricingService.js` | Interchangeable pricing algorithms with runtime switching |
 | 7 | Command | Behavioural | `commands/`, `mvc/MobilityRequestHandler.js` | Encapsulate each request as an object; remove switch statement |
-| 8 | Visitor | Behavioural | `analytics/events/`, `analytics/visitors/` | Add new analytics operations without modifying event classes |
+| 8 | Visitor | Behavioural | `analytics/events/` (9 events), `analytics/visitors/` | Add new analytics operations without modifying event classes |
 
 ---
 
@@ -98,6 +98,8 @@ module.exports = MobilityRequest;          // callers instantiate per use
 **How it works**
 
 `MobilityService` emits typed domain events onto `EventBus` after each significant operation. `AnalyticsListener` subscribes to those events and persists them to Firestore. Neither side imports the other — they share only an event name string.
+
+Events emitted by `MobilityService`: `RESERVATION_CREATED`, `BOOKING_CONFIRMED`, `PAYMENT_PROCESSED`, `VEHICLE_RETURNED`, `PARKING_RESERVED`, `PARKING_RELEASED`, `TRANSIT_QUERY`, `GATEWAY_CALL`, `RIDE_JOINED`.
 
 ```js
 // Publisher (MobilityService)
@@ -338,7 +340,7 @@ const totalPrice = PricingService.calculatePrice(option, startTime, endTime);
 | Role | Class |
 |---|---|
 | Command interface | `commands/ICommand.js` |
-| Concrete commands | `commands/booking.commands.js`, `vehicle.commands.js`, `provider.commands.js`, `parking.commands.js`, `transit.commands.js`, `analytics.commands.js` (19 command classes total) |
+| Concrete commands | `commands/booking.commands.js`, `vehicle.commands.js`, `provider.commands.js`, `parking.commands.js`, `transit.commands.js`, `analytics.commands.js` (22 command classes total) |
 | Receiver | `mvc/MobilityService.js` — injected into every command via constructor |
 | Registry | `commands/CommandRegistry.js` — maps request type string → command instance |
 | Invoker | `mvc/MobilityRequestHandler.js` — looks up and calls `execute()` |
@@ -371,7 +373,7 @@ class CreateBookingDraftCommand extends ICommand {
 const registry = new Map([
   ['CREATE_BOOKING_DRAFT', new CreateBookingDraftCommand(MobilityService)],
   ['CONFIRM_BOOKING',      new ConfirmBookingCommand(MobilityService)],
-  // ... 17 more
+  // ... 20 more (including LIST_RIDE_SHARES, JOIN_RIDE, LEAVE_RIDE)
 ]);
 
 // MobilityRequestHandler — invoker (replaces 19-case switch statement)

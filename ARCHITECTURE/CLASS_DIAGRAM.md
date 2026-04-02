@@ -15,7 +15,7 @@
 │   CommuterUI          ProviderDashboardView  AdminDashboardView│
 │   CommuterWebView     ProviderWebView        AnalyticsReportView│
 │   (BookingFlow, VehicleList, ParkingPage, TransitPage,      │
-│    MyBookings, Register, Login,                             │
+│    MyBookings, RideShare, Register, Login,                  │
 │    ProviderDashboard, VehicleForm)                          │
 └───────────────────┬─────────────────────────────────────────┘
                     │ HTTP request / JSON response
@@ -96,6 +96,9 @@ View displays result to user
 │ + getNearbyStops(req, res, next)                     │
 │ + getRentalAnalytics(req, res, next)                 │
 │ + getGatewayAnalytics(req, res, next)                │
+│ + listRideShares(req, res, next)                     │
+│ + joinRide(req, res, next)                           │
+│ + leaveRide(req, res, next)                          │
 │─────────────────────────────────────────────────────│
 │  No business logic. Creates MobilityRequest,         │
 │  delegates to MobilityRequestHandler, passes         │
@@ -143,7 +146,8 @@ View displays result to user
 │        GET_AVAILABLE_SPOTS,                          │
 │        RESERVE_PARKING_SPOT, RELEASE_PARKING_SPOT,   │
 │        GET_TRANSIT_SCHEDULE, GET_NEARBY_STOPS,       │
-│        GET_RENTAL_ANALYTICS, GET_GATEWAY_ANALYTICS   │
+│        GET_RENTAL_ANALYTICS, GET_GATEWAY_ANALYTICS,  │
+│        LIST_RIDE_SHARES, JOIN_RIDE, LEAVE_RIDE        │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -214,6 +218,11 @@ View displays result to user
 │ + getRentalAnalytics()                               │
 │ + getGatewayAnalytics()                              │
 │─────────────────────────────────────────────────────│
+│  Ride Sharing:                                       │
+│ + getActiveRideShares()                              │
+│ + joinRide(bookingId, userId)                        │
+│ + leaveRide(bookingId, userId)                       │
+│─────────────────────────────────────────────────────│
 │  Uses: MobilityDataGateway, BookingStateMachine,     │
 │        IPaymentGateway (Strategy), EventBus          │
 └─────────────────────────────────────────────────────┘
@@ -244,6 +253,9 @@ View displays result to user
 │ totalPrice: number    │   │<<entity>>             │
 │ status: BookingStatus │   │  PaymentReceipt       │
 │ pickupLocation: any   │   │───────────────────────│
+│ rideSharing: boolean  │
+│ maxPassengers: number │
+│ passengers: string[]  │
 └───────────────────────┘   │ id: string            │
                             │ bookingId: string     │
                             │ amount: number        │
@@ -316,6 +328,9 @@ View displays result to user
 │  Analytics:                                          │
 │ + getRentalAnalytics()                               │
 │ + getGatewayAnalytics()                              │
+│─────────────────────────────────────────────────────│
+│  Ride Sharing:                                       │
+│ + findActiveRideShares()                             │
 │─────────────────────────────────────────────────────│
 │  Delegates to: MobilityDataMapper + Firestore models │
 └─────────────────────────────────────────────────────┘

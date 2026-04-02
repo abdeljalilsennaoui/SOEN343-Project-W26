@@ -1,5 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 const db = require('../lib/firestore');
+const MobilityOption = require('./MobilityOption');
+const { UserRole } = require('./enums');
 
 const col = db.collection('analytics');
 
@@ -30,9 +32,41 @@ async function findAll() {
   return snap.docs.map((d) => d.data());
 }
 
-async function getRentalAnalytics() {
+async function getRentalAnalytics(userId = null, role = null) {
   const snap = await col.where('type', '==', 'RESERVATION_CREATED').limit(500).get();
-  const rentalEvents = snap.docs.map((d) => d.data());
+  let rentalEvents = snap.docs.map((d) => d.data());
+
+  if (role === UserRole.MOBILITY_PROVIDER && userId) {
+    const providerByOptionId = new Map();
+    const unresolvedOptionIds = new Set();
+
+    for (const event of rentalEvents) {
+      const optionId = event.metadata?.optionId;
+      if (!optionId) continue;
+      if (!event.metadata?.providerId) unresolvedOptionIds.add(optionId);
+    }
+
+    await Promise.all(
+      [...unresolvedOptionIds].map(async (optionId) => {
+        try {
+          const option = await MobilityOption.findById(optionId);
+          providerByOptionId.set(optionId, option?.providerId || null);
+        } catch {
+          providerByOptionId.set(optionId, null);
+        }
+      }),
+    );
+
+    rentalEvents = rentalEvents.filter((event) => {
+      const eventProviderId = event.metadata?.providerId;
+      if (eventProviderId) return eventProviderId === userId;
+
+      const optionId = event.metadata?.optionId;
+      if (!optionId) return false;
+
+      return providerByOptionId.get(optionId) === userId;
+    });
+  }
 
   const totalRentals = rentalEvents.length;
   const rentalsByCity = {};

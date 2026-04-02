@@ -62,6 +62,7 @@ class MobilityDataMapper {
       basePrice: doc.basePrice,
       capacity: doc.capacity ?? 1,
       description: doc.description || '',
+      providerId: doc.providerId || null,
       blockedPeriods: doc.blockedPeriods || [],
     };
   }

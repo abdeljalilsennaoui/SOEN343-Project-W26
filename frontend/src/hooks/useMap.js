@@ -75,6 +75,7 @@ export function useMap() {
   const rideSharesRef = useRef([]);
 
   const [pendingBooking, setPendingBooking] = useState(null); // { location, option }
+  const [pendingPayment, setPendingPayment] = useState(null); // { draft, rideSharing }
   const [dataset, setDataset] = useState('RENTALS');
   const [addressInput, setAddressInput] = useState('');
   const [destinationInput, setDestinationInput] = useState('');
@@ -473,10 +474,7 @@ export function useMap() {
         lng: location.lng,
       });
       await loadRentalVehicles();
-      setBookingStatus({
-        ok: true,
-        message: `Draft created — ID: ${response.data.id} · $${response.data.totalPrice.toFixed(2)} for 60 min`,
-      });
+      setPendingPayment({ draft: response.data, rideSharing: false });
     } catch (error) {
       setBookingStatus({ ok: false, message: error.message });
     }
@@ -500,24 +498,36 @@ export function useMap() {
         rideSharing,
         rideSharing ? maxPassengers : 0,
       );
-      const draft = draftRes.data;
-      // Auto-confirm so the booking is immediately ACTIVE (and visible on the ride share page).
-      const confirmed = await confirmBooking(draft.id, 'tok_demo');
-      const booking = confirmed.data.booking;
-      // Refresh map data before closing modal so the user sees fresh availability immediately.
       await loadRentalVehicles();
-      loadRideShares();
-      loadActiveBookings();
       setPendingBooking(null);
-      setBookingStatus({
-        ok: true,
-        message: `Booked — ID: ${booking.id.slice(0, 8)} · $${booking.totalPrice?.toFixed(2)} · ${booking.status}${rideSharing ? ' · Ride sharing on' : ''}`,
-      });
+      setPendingPayment({ draft: draftRes.data, rideSharing });
     } catch (error) {
       setPendingBooking(null);
       setBookingStatus({ ok: false, message: error.message });
     }
-  }, [pendingBooking, loadRentalVehicles, loadRideShares, loadActiveBookings]);
+  }, [pendingBooking, loadRentalVehicles]);
+
+  const confirmPayment = useCallback(async (paymentToken) => {
+    if (!pendingPayment) return;
+    const { draft, rideSharing } = pendingPayment;
+    try {
+      const confirmed = await confirmBooking(draft.id, paymentToken);
+      const booking = confirmed.data.booking;
+      await loadRentalVehicles();
+      loadRideShares();
+      loadActiveBookings();
+      setPendingPayment(null);
+      setBookingStatus({
+        ok: true,
+        message: `Booked — ID: ${booking.id.slice(0, 8)} · $${booking.totalPrice?.toFixed(2)}${rideSharing ? ' · Ride sharing on' : ''}`,
+      });
+    } catch (error) {
+      setPendingPayment(null);
+      setBookingStatus({ ok: false, message: error.message });
+    }
+  }, [pendingPayment, loadRentalVehicles, loadRideShares, loadActiveBookings]);
+
+  const cancelPayment = useCallback(() => setPendingPayment(null), []);
 
   useEffect(() => {
     window._mapJoinClick = async (bookingId) => { await joinRideOnMap(bookingId); };
@@ -617,11 +627,9 @@ export function useMap() {
           const enriched = { ...location };
           if (dataset === 'RENTALS') {
             const opts = mobilityOptionsRef.current.filter((o) => o.type === location.type);
-            const vehicleCount = locations.filter((l) => l.type === location.type).length;
-            const capacity = vehicleCount || opts.reduce((s, o) => s + (o.capacity ?? 0), 0);
             if (opts.length > 0) {
-              const optRemaining = opts.reduce((s, o) => s + (o.remaining ?? 0), 0);
-              const remaining = Math.min(optRemaining, capacity);
+              const remaining = opts.reduce((s, o) => s + (o.remaining ?? 0), 0);
+              const capacity = opts.reduce((s, o) => s + (o.capacity ?? 1), 0);
               enriched.remaining = remaining;
               enriched.capacity = capacity;
               enriched.availabilityNote = remaining > 0 ? `${remaining}/${capacity} available` : 'Fully booked';
@@ -767,6 +775,10 @@ export function useMap() {
     if (!mapReady || !mapRef.current) return;
 
     const listener = mapRef.current.addListener('click', async (event) => {
+      if (event.placeId) {
+        event.stop();
+      }
+
       if (!mapClickMode) return;
 
       const latLng = {
@@ -877,5 +889,8 @@ export function useMap() {
     pendingBooking,
     confirmPendingBooking,
     cancelPendingBooking: () => setPendingBooking(null),
+    pendingPayment,
+    confirmPayment,
+    cancelPayment,
   };
 }

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getProviderVehicles, addProviderVehicle, updateProviderVehicle, deactivateProviderVehicle, getMyProfile } from '../services/api';
 import VehicleCard from '../components/VehicleCard';
 import ErrorMessage from '../components/ErrorMessage';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const CITIES = ['', 'Montreal', 'Toronto', 'Vancouver'];
 const TYPES = ['', 'CAR_SHARING', 'BIKE_SHARING', 'SCOOTER_SHARING'];
@@ -12,6 +13,9 @@ const TYPE_LABELS = {
   BIKE_SHARING: 'Bike',
   SCOOTER_SHARING: 'Scooter',
 };
+
+const ALL_CITIES_VALUE = 'ALL_CITIES';
+const ALL_TYPES_VALUE = 'ALL_TYPES';
 
 const AVAILABILITY_OPTIONS = [
   'AVAILABLE',
@@ -117,6 +121,13 @@ function VehicleList() {
     }));
   };
 
+  const handleFormSelectChange = (name, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError(null);
@@ -179,24 +190,36 @@ function VehicleList() {
       )}
 
       <div className="flex gap-4 mb-6">
-        <select
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          className="px-4 py-2 border border-gray-600 bg-[#13161d] text-[#e8eaf0] rounded-md text-sm transition-colors focus:border-gray-300 focus:outline-none"
+        <Select
+          value={city || ALL_CITIES_VALUE}
+          onValueChange={(value) => setCity(value === ALL_CITIES_VALUE ? '' : value)}
         >
-          {CITIES.map((c) => (
-            <option key={c} value={c}>{c || 'All Cities'}</option>
-          ))}
-        </select>
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          className="px-4 py-2 border border-gray-600 bg-[#13161d] text-[#e8eaf0] rounded-md text-sm transition-colors focus:border-gray-300 focus:outline-none"
+          <SelectTrigger className="w-[180px] border-gray-600 bg-[#13161d] text-[#e8eaf0] focus-visible:border-gray-300 focus-visible:ring-0">
+            <SelectValue placeholder="All Cities" />
+          </SelectTrigger>
+          <SelectContent>
+            {CITIES.map((c) => (
+              <SelectItem key={c || ALL_CITIES_VALUE} value={c || ALL_CITIES_VALUE}>
+                {c || 'All Cities'}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={type || ALL_TYPES_VALUE}
+          onValueChange={(value) => setType(value === ALL_TYPES_VALUE ? '' : value)}
         >
-          {TYPES.map((t) => (
-            <option key={t} value={t}>{TYPE_LABELS[t]}</option>
-          ))}
-        </select>
+          <SelectTrigger className="w-[180px] border-gray-600 bg-[#13161d] text-[#e8eaf0] focus-visible:border-gray-300 focus-visible:ring-0">
+            <SelectValue placeholder="All Types" />
+          </SelectTrigger>
+          <SelectContent>
+            {TYPES.map((t) => (
+              <SelectItem key={t || ALL_TYPES_VALUE} value={t || ALL_TYPES_VALUE}>
+                {TYPE_LABELS[t]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <ErrorMessage error={error} />
@@ -230,32 +253,30 @@ function VehicleList() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">City</label>
-                <select
-                  name="city"
-                  value={formData.city}
-                  onChange={handleFormChange}
-                  className="w-full px-3 py-2 border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md transition-colors focus:border-gray-300 focus:outline-none"
-                  required
-                >
-                  {CITIES.filter(c => c).map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
+                <Select value={formData.city} onValueChange={(value) => handleFormSelectChange('city', value)}>
+                  <SelectTrigger className="w-full border-gray-600 bg-[#0d0f14] text-[#e8eaf0] focus-visible:border-gray-300 focus-visible:ring-0">
+                    <SelectValue placeholder="Select city" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CITIES.filter(c => c).map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Type</label>
-                <select
-                  name="type"
-                  value={formData.type}
-                  onChange={handleFormChange}
-                  className="w-full px-3 py-2 border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md transition-colors focus:border-gray-300 focus:outline-none"
-                  required
-                >
-                  {TYPES.filter(t => t).map((t) => (
-                    <option key={t} value={t}>{TYPE_LABELS[t]}</option>
-                  ))}
-                </select>
+                <Select value={formData.type} onValueChange={(value) => handleFormSelectChange('type', value)}>
+                  <SelectTrigger className="w-full border-gray-600 bg-[#0d0f14] text-[#e8eaf0] focus-visible:border-gray-300 focus-visible:ring-0">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TYPES.filter(t => t).map((t) => (
+                      <SelectItem key={t} value={t}>{TYPE_LABELS[t]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
@@ -313,16 +334,16 @@ function VehicleList() {
               {editingVehicle && (
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1">Availability</label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleFormChange}
-                    className="w-full px-3 py-2 border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md transition-colors focus:border-gray-300 focus:outline-none"
-                  >
-                    {AVAILABILITY_OPTIONS.map((status) => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
-                  </select>
+                  <Select value={formData.status} onValueChange={(value) => handleFormSelectChange('status', value)}>
+                    <SelectTrigger className="w-full border-gray-600 bg-[#0d0f14] text-[#e8eaf0] focus-visible:border-gray-300 focus-visible:ring-0">
+                      <SelectValue placeholder="Select availability" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AVAILABILITY_OPTIONS.map((status) => (
+                        <SelectItem key={status} value={status}>{status}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 

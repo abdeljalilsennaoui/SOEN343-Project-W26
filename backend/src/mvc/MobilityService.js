@@ -101,7 +101,13 @@ class MobilityService {
       rideSharing, maxPassengers: clampedMax, passengers: [],
     });
 
-    EventBus.emit('RESERVATION_CREATED', new ReservationCreatedEvent({ city: option.city, vehicleType: option.type, optionId, userId }));
+    EventBus.emit('RESERVATION_CREATED', new ReservationCreatedEvent({
+      city: option.city,
+      vehicleType: option.type,
+      optionId,
+      userId,
+      providerId: option.providerId || null,
+    }));
     return booking;
   }
 
@@ -295,8 +301,8 @@ class MobilityService {
 
   // ── Analytics ─────────────────────────────────────────────────────────────
 
-  async getRentalAnalytics() {
-    return MobilityDataGateway.getRentalAnalytics();
+  async getRentalAnalytics(userId, role) {
+    return MobilityDataGateway.getRentalAnalytics(userId, role);
   }
 
   async getGatewayAnalytics() {

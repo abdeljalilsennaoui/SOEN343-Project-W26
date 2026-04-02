@@ -7,18 +7,24 @@
 const AnalyticsEvent = require('./AnalyticsEvent');
 
 class ReservationCreatedEvent extends AnalyticsEvent {
-  constructor({ city, vehicleType, optionId, userId }) {
+  constructor({ city, vehicleType, optionId, userId, providerId = null }) {
     super();
     this._city = city;
     this._vehicleType = vehicleType;
     this._optionId = optionId;
     this._userId = userId;
+    this._providerId = providerId;
   }
 
   get type() { return 'RESERVATION_CREATED'; }
   get city() { return this._city; }
   get metadata() {
-    return { vehicleType: this._vehicleType, optionId: this._optionId, userId: this._userId };
+    return {
+      vehicleType: this._vehicleType,
+      optionId: this._optionId,
+      userId: this._userId,
+      providerId: this._providerId,
+    };
   }
 
   accept(visitor) { visitor.visit(this); }

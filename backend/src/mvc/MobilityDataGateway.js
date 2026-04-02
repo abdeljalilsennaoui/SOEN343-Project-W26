@@ -159,8 +159,8 @@ class MobilityDataGateway {
 
   // ── Analytics ─────────────────────────────────────────────────────────────
 
-  async getRentalAnalytics() {
-    return AnalyticsReport.getRentalAnalytics();
+  async getRentalAnalytics(userId, role) {
+    return AnalyticsReport.getRentalAnalytics(userId, role);
   }
 
   async getGatewayAnalytics() {

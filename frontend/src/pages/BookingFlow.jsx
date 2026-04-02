@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { searchMobilityOptions, createBookingDraft, confirmBooking, completeBooking } from '../services/api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const CITIES = ['Montreal', 'Toronto', 'Vancouver'];
 const TYPES = ['CAR_SHARING', 'BIKE_SHARING', 'SCOOTER_SHARING'];
 const TYPE_LABELS = { CAR_SHARING: 'Car Sharing', BIKE_SHARING: 'Bike Sharing', SCOOTER_SHARING: 'Scooter Sharing' };
+const ALL_TYPES_VALUE = 'ALL_TYPES';
 
 const steps = ['Search', 'Select Option', 'Payment', 'Confirmation'];
 
@@ -71,19 +73,34 @@ function SearchStep({ onResults }) {
 
       <div>
         <label className="block text-sm font-medium text-gray-400 mb-1">City</label>
-        <select value={form.city} onChange={(e) => set('city', e.target.value)}
-          className="w-full border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md px-3 py-2 text-sm transition-colors focus:border-gray-300 focus:outline-none">
-          {CITIES.map((c) => <option key={c}>{c}</option>)}
-        </select>
+        <Select value={form.city} onValueChange={(value) => set('city', value)}>
+          <SelectTrigger className="w-full border-gray-600 bg-[#0d0f14] text-[#e8eaf0] focus-visible:border-gray-300 focus-visible:ring-0">
+            <SelectValue placeholder="Select city" />
+          </SelectTrigger>
+          <SelectContent>
+            {CITIES.map((c) => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-400 mb-1">Type (optional)</label>
-        <select value={form.type} onChange={(e) => set('type', e.target.value)}
-          className="w-full border border-gray-600 bg-[#0d0f14] text-[#e8eaf0] rounded-md px-3 py-2 text-sm transition-colors focus:border-gray-300 focus:outline-none">
-          <option value="">All types</option>
-          {TYPES.map((t) => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
-        </select>
+        <Select
+          value={form.type || ALL_TYPES_VALUE}
+          onValueChange={(value) => set('type', value === ALL_TYPES_VALUE ? '' : value)}
+        >
+          <SelectTrigger className="w-full border-gray-600 bg-[#0d0f14] text-[#e8eaf0] focus-visible:border-gray-300 focus-visible:ring-0">
+            <SelectValue placeholder="All types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_TYPES_VALUE}>All types</SelectItem>
+            {TYPES.map((t) => (
+              <SelectItem key={t} value={t}>{TYPE_LABELS[t]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid grid-cols-2 gap-3">

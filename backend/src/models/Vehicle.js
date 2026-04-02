@@ -9,6 +9,7 @@ async function findAll(filters = {}) {
   if (filters.city) query = query.where('city', '==', filters.city);
   if (filters.type) query = query.where('type', '==', filters.type);
   if (filters.status) query = query.where('status', '==', filters.status);
+  if (filters.providerId) query = query.where('providerId', '==', filters.providerId);
   const snap = await query.get();
   return snap.docs.map((d) => d.data());
 }

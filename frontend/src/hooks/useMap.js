@@ -18,6 +18,7 @@ const RENTAL_FALLBACK_BY_TYPE = RENTALS.reduce((acc, rental) => {
 
 function mapVehiclesToRentalLocations(vehicles = []) {
   const typeIndex = {};
+  const positionIndex = {};
 
   return vehicles
     .map((vehicle, index) => {
@@ -27,10 +28,17 @@ function mapVehiclesToRentalLocations(vehicles = []) {
       typeIndex[type] = slot + 1;
       const fallback = fallbackPool[slot % fallbackPool.length] ?? RENTALS[index % RENTALS.length];
 
-      const lat = Number(vehicle.lat ?? fallback?.lat);
-      const lng = Number(vehicle.lng ?? fallback?.lng);
+      const baseLat = Number(vehicle.lat ?? fallback?.lat);
+      const baseLng = Number(vehicle.lng ?? fallback?.lng);
 
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      if (!Number.isFinite(baseLat) || !Number.isFinite(baseLng)) return null;
+
+      // Offset duplicate coordinates so stacked markers are all individually visible (~33 m per step).
+      const posKey = `${baseLat.toFixed(4)},${baseLng.toFixed(4)}`;
+      const posCount = positionIndex[posKey] ?? 0;
+      positionIndex[posKey] = posCount + 1;
+      const lat = baseLat + posCount * 0.0003;
+      const lng = baseLng + posCount * 0.0003;
 
       return {
         id: vehicle.id ?? `vehicle-${index}`,

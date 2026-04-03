@@ -1,89 +1,92 @@
+jest.mock('../../../src/lib/firestore');
+
+const db = require('../../../src/lib/firestore');
 const Reservation = require('../../../src/models/Reservation');
 const Vehicle = require('../../../src/models/Vehicle');
-const { ReservationStatus, VehicleStatus } = require('../../../src/models/enums');
+const { ReservationStatus, VehicleStatus, TripMode } = require('../../../src/models/enums');
 
-describe('Reservation Model', () => {
-  describe('createReservation', () => {
-    it('should create a reservation for an available vehicle', () => {
-      const vehicles = Vehicle.getAvailableVehicles('Montreal');
-      const vehicleId = vehicles[0].id;
+function seed() {
+  const vehicles = [
+    { id: 'mtl-1', city: 'Montreal',  type: TripMode.BIKE_SHARING,     status: VehicleStatus.AVAILABLE, pricePerMin: 0.5 },
+    { id: 'mtl-2', city: 'Montreal',  type: TripMode.BIKE_SHARING,     status: VehicleStatus.AVAILABLE, pricePerMin: 0.5 },
+    { id: 'tor-1', city: 'Toronto',   type: TripMode.SCOOTER_SHARING,  status: VehicleStatus.AVAILABLE, pricePerMin: 0.8 },
+    { id: 'tor-2', city: 'Toronto',   type: TripMode.SCOOTER_SHARING,  status: VehicleStatus.AVAILABLE, pricePerMin: 0.8 },
+    { id: 'van-1', city: 'Vancouver', type: TripMode.CAR_SHARING,      status: VehicleStatus.AVAILABLE, pricePerMin: 1.5 },
+    { id: 'van-2', city: 'Vancouver', type: TripMode.CAR_SHARING,      status: VehicleStatus.AVAILABLE, pricePerMin: 1.5 },
+  ];
+  db._seed('vehicles', vehicles);
+}
 
-      const reservation = Reservation.createReservation('user-1', vehicleId);
+beforeEach(() => { db._reset(); seed(); });
 
-      expect(reservation.userId).toBe('user-1');
-      expect(reservation.vehicleId).toBe(vehicleId);
-      expect(reservation.status).toBe(ReservationStatus.ACTIVE);
-      expect(reservation.startTime).toBeDefined();
-      expect(reservation.endTime).toBeNull();
+describe('Reservation.createReservation()', () => {
+  it('creates a reservation for an available vehicle', async () => {
+    const vehicles = await Vehicle.getAvailableVehicles('Montreal');
+    const vehicleId = vehicles[0].id;
 
-      // Clean up
-      Reservation.completeReservation(reservation.id);
-    });
+    const reservation = await Reservation.createReservation('user-1', vehicleId);
 
-    it('should mark the vehicle as reserved', () => {
-      const vehicles = Vehicle.getAvailableVehicles('Toronto');
-      const vehicleId = vehicles[0].id;
-
-      const reservation = Reservation.createReservation('user-2', vehicleId);
-      const vehicle = Vehicle.findById(vehicleId);
-      expect(vehicle.status).toBe(VehicleStatus.RESERVED);
-
-      // Clean up
-      Reservation.completeReservation(reservation.id);
-    });
-
-    it('should throw when vehicle is not available', () => {
-      const vehicles = Vehicle.getAvailableVehicles('Vancouver');
-      const vehicleId = vehicles[0].id;
-
-      const reservation = Reservation.createReservation('user-3', vehicleId);
-
-      expect(() => Reservation.createReservation('user-4', vehicleId)).toThrow('not available');
-
-      // Clean up
-      Reservation.completeReservation(reservation.id);
-    });
+    expect(reservation.userId).toBe('user-1');
+    expect(reservation.vehicleId).toBe(vehicleId);
+    expect(reservation.status).toBe(ReservationStatus.ACTIVE);
+    expect(reservation.startTime).toBeDefined();
+    expect(reservation.endTime).toBeNull();
   });
 
-  describe('getReservation', () => {
-    it('should return reservation by id', () => {
-      const vehicles = Vehicle.getAvailableVehicles('Montreal');
-      const created = Reservation.createReservation('user-5', vehicles[0].id);
+  it('marks the vehicle as reserved', async () => {
+    const vehicles = await Vehicle.getAvailableVehicles('Toronto');
+    const vehicleId = vehicles[0].id;
 
-      const found = Reservation.getReservation(created.id);
-      expect(found.id).toBe(created.id);
-
-      // Clean up
-      Reservation.completeReservation(created.id);
-    });
-
-    it('should throw NOT_FOUND for nonexistent reservation', () => {
-      expect(() => Reservation.getReservation('nonexistent')).toThrow('not found');
-    });
+    await Reservation.createReservation('user-2', vehicleId);
+    const vehicle = await Vehicle.findById(vehicleId);
+    expect(vehicle.status).toBe(VehicleStatus.RESERVED);
   });
 
-  describe('completeReservation', () => {
-    it('should complete a reservation and release the vehicle', () => {
-      const vehicles = Vehicle.getAvailableVehicles('Toronto');
-      const vehicleId = vehicles[0].id;
-      const reservation = Reservation.createReservation('user-6', vehicleId);
+  it('throws when vehicle is not available', async () => {
+    const vehicles = await Vehicle.getAvailableVehicles('Vancouver');
+    const vehicleId = vehicles[0].id;
 
-      const completed = Reservation.completeReservation(reservation.id);
+    await Reservation.createReservation('user-3', vehicleId);
 
-      expect(completed.status).toBe(ReservationStatus.COMPLETED);
-      expect(completed.endTime).toBeDefined();
+    await expect(Reservation.createReservation('user-4', vehicleId)).rejects.toThrow('not available');
+  });
+});
 
-      const vehicle = Vehicle.findById(vehicleId);
-      expect(vehicle.status).toBe(VehicleStatus.AVAILABLE);
-    });
+describe('Reservation.getReservation()', () => {
+  it('returns a reservation by id', async () => {
+    const vehicles = await Vehicle.getAvailableVehicles('Montreal');
+    const created = await Reservation.createReservation('user-5', vehicles[0].id);
 
-    it('should throw CONFLICT for already completed reservation', () => {
-      const vehicles = Vehicle.getAvailableVehicles('Vancouver');
-      const reservation = Reservation.createReservation('user-7', vehicles[0].id);
+    const found = await Reservation.getReservation(created.id);
+    expect(found.id).toBe(created.id);
+  });
 
-      Reservation.completeReservation(reservation.id);
+  it('throws NOT_FOUND for nonexistent reservation', async () => {
+    await expect(Reservation.getReservation('nonexistent')).rejects.toThrow('not found');
+  });
+});
 
-      expect(() => Reservation.completeReservation(reservation.id)).toThrow('already completed');
-    });
+describe('Reservation.completeReservation()', () => {
+  it('completes a reservation and releases the vehicle', async () => {
+    const vehicles = await Vehicle.getAvailableVehicles('Toronto');
+    const vehicleId = vehicles[0].id;
+    const reservation = await Reservation.createReservation('user-6', vehicleId);
+
+    const completed = await Reservation.completeReservation(reservation.id);
+
+    expect(completed.status).toBe(ReservationStatus.COMPLETED);
+    expect(completed.endTime).toBeDefined();
+
+    const vehicle = await Vehicle.findById(vehicleId);
+    expect(vehicle.status).toBe(VehicleStatus.AVAILABLE);
+  });
+
+  it('throws CONFLICT for already completed reservation', async () => {
+    const vehicles = await Vehicle.getAvailableVehicles('Vancouver');
+    const reservation = await Reservation.createReservation('user-7', vehicles[0].id);
+
+    await Reservation.completeReservation(reservation.id);
+
+    await expect(Reservation.completeReservation(reservation.id)).rejects.toThrow('already completed');
   });
 });

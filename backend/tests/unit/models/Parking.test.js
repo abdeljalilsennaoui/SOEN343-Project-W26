@@ -1,86 +1,101 @@
+jest.mock('../../../src/lib/firestore');
+
+const db = require('../../../src/lib/firestore');
 const Parking = require('../../../src/models/Parking');
 
-describe('Parking Model', () => {
-  describe('findAllFacilities', () => {
-    it('should return all facilities', () => {
-      const facilities = Parking.findAllFacilities();
-      expect(facilities.length).toBe(6);
-    });
+function seed() {
+  const cities = ['Montreal', 'Toronto', 'Vancouver'];
+  const facilities = cities.flatMap((city, ci) => [
+    { id: `fac-${city.toLowerCase()}-1`, city, name: `${city} Facility 1` },
+    { id: `fac-${city.toLowerCase()}-2`, city, name: `${city} Facility 2` },
+  ]);
 
-    it('should filter facilities by city', () => {
-      const facilities = Parking.findAllFacilities('Montreal');
-      expect(facilities.length).toBe(2);
-      facilities.forEach((f) => {
-        expect(f.city).toBe('Montreal');
-      });
-    });
+  const spots = facilities.flatMap((fac) =>
+    Array.from({ length: 5 }, (_, i) => ({
+      id: `spot-${fac.id}-${i + 1}`,
+      facilityId: fac.id,
+      status: 'AVAILABLE',
+      city: fac.city,
+    })),
+  );
 
-    it('should return empty array for unknown city', () => {
-      const facilities = Parking.findAllFacilities('Ottawa');
-      expect(facilities).toEqual([]);
-    });
+  db._seed('parkingFacilities', facilities);
+  db._seed('parkingSpots', spots);
+}
+
+beforeEach(() => { db._reset(); seed(); });
+
+describe('Parking.findAllFacilities()', () => {
+  it('returns all facilities', async () => {
+    const facilities = await Parking.findAllFacilities();
+    expect(facilities.length).toBe(6);
   });
 
-  describe('findFacilityById', () => {
-    it('should return a facility by id', () => {
-      const facilities = Parking.findAllFacilities();
-      const facility = Parking.findFacilityById(facilities[0].id);
-      expect(facility).toBeDefined();
-      expect(facility.name).toBeDefined();
-    });
-
-    it('should return null for unknown id', () => {
-      const facility = Parking.findFacilityById('unknown');
-      expect(facility).toBeNull();
-    });
+  it('filters facilities by city', async () => {
+    const facilities = await Parking.findAllFacilities('Montreal');
+    expect(facilities.length).toBe(2);
+    facilities.forEach((f) => expect(f.city).toBe('Montreal'));
   });
 
-  describe('findSpotsByFacility', () => {
-    it('should return spots for a facility', () => {
-      const facilities = Parking.findAllFacilities();
-      const spots = Parking.findSpotsByFacility(facilities[0].id);
-      expect(spots.length).toBe(5);
-      spots.forEach((s) => {
-        expect(s.facilityId).toBe(facilities[0].id);
-      });
-    });
+  it('returns empty array for unknown city', async () => {
+    const facilities = await Parking.findAllFacilities('Ottawa');
+    expect(facilities).toEqual([]);
+  });
+});
+
+describe('Parking.findFacilityById()', () => {
+  it('returns a facility by id', async () => {
+    const facility = await Parking.findFacilityById('fac-montreal-1');
+    expect(facility).not.toBeNull();
+    expect(facility.name).toBeDefined();
   });
 
-  describe('getAvailableSpots', () => {
-    it('should return available spots for a city', () => {
-      const spots = Parking.getAvailableSpots('Toronto');
-      expect(spots.length).toBeGreaterThan(0);
-      spots.forEach((s) => {
-        expect(s.status).toBe('AVAILABLE');
-      });
-    });
+  it('returns null for unknown id', async () => {
+    const facility = await Parking.findFacilityById('unknown');
+    expect(facility).toBeNull();
+  });
+});
+
+describe('Parking.findSpotsByFacility()', () => {
+  it('returns 5 spots for a facility', async () => {
+    const spots = await Parking.findSpotsByFacility('fac-montreal-1');
+    expect(spots.length).toBe(5);
+    spots.forEach((s) => expect(s.facilityId).toBe('fac-montreal-1'));
+  });
+});
+
+describe('Parking.getAvailableSpots()', () => {
+  it('returns available spots for a city', async () => {
+    const spots = await Parking.getAvailableSpots('Toronto');
+    expect(spots.length).toBeGreaterThan(0);
+    spots.forEach((s) => expect(s.status).toBe('AVAILABLE'));
   });
 
-  describe('reserveSpot / releaseSpot', () => {
-    it('should reserve and release a spot', () => {
-      const spots = Parking.getAvailableSpots('Vancouver');
-      const spotId = spots[0].id;
+  it('returns empty array for unknown city', async () => {
+    const spots = await Parking.getAvailableSpots('Ottawa');
+    expect(spots).toEqual([]);
+  });
+});
 
-      const reserved = Parking.reserveSpot(spotId);
-      expect(reserved.status).toBe('RESERVED');
+describe('Parking.reserveSpot() / releaseSpot()', () => {
+  it('reserves and releases a spot', async () => {
+    const spotId = 'spot-fac-vancouver-1-1';
 
-      const released = Parking.releaseSpot(spotId);
-      expect(released.status).toBe('AVAILABLE');
-    });
+    const reserved = await Parking.reserveSpot(spotId);
+    expect(reserved.status).toBe('RESERVED');
 
-    it('should throw when reserving an already reserved spot', () => {
-      const spots = Parking.getAvailableSpots('Vancouver');
-      const spotId = spots[0].id;
+    const released = await Parking.releaseSpot(spotId);
+    expect(released.status).toBe('AVAILABLE');
+  });
 
-      Parking.reserveSpot(spotId);
-      expect(() => Parking.reserveSpot(spotId)).toThrow();
+  it('throws CONFLICT when reserving an already reserved spot', async () => {
+    const spotId = 'spot-fac-vancouver-1-2';
 
-      // Cleanup
-      Parking.releaseSpot(spotId);
-    });
+    await Parking.reserveSpot(spotId);
+    await expect(Parking.reserveSpot(spotId)).rejects.toThrow();
+  });
 
-    it('should throw for unknown spot', () => {
-      expect(() => Parking.reserveSpot('unknown')).toThrow();
-    });
+  it('throws NOT_FOUND for unknown spot', async () => {
+    await expect(Parking.reserveSpot('unknown')).rejects.toThrow();
   });
 });

@@ -1,103 +1,109 @@
+jest.mock('../../../src/lib/firestore');
+
+const db = require('../../../src/lib/firestore');
 const Vehicle = require('../../../src/models/Vehicle');
 const { VehicleStatus, TripMode } = require('../../../src/models/enums');
 
-describe('Vehicle Model', () => {
-  describe('getAvailableVehicles', () => {
-    it('should return all available vehicles when no filters', () => {
-      const vehicles = Vehicle.getAvailableVehicles();
-      expect(vehicles.length).toBeGreaterThan(0);
-      vehicles.forEach((v) => {
-        expect(v.status).toBe(VehicleStatus.AVAILABLE);
-      });
-    });
+const montreal = (i) => ({ id: `mtl-${i}`, city: 'Montreal', type: TripMode.BIKE_SHARING, status: VehicleStatus.AVAILABLE, pricePerMin: 0.5 });
+const toronto  = (i) => ({ id: `tor-${i}`, city: 'Toronto',  type: TripMode.SCOOTER_SHARING, status: VehicleStatus.AVAILABLE, pricePerMin: 0.8 });
+const van      = (i) => ({ id: `van-${i}`, city: 'Vancouver', type: TripMode.CAR_SHARING,  status: VehicleStatus.AVAILABLE, pricePerMin: 1.5 });
 
-    it('should filter by city', () => {
-      const vehicles = Vehicle.getAvailableVehicles('Montreal');
-      expect(vehicles.length).toBeGreaterThan(0);
-      vehicles.forEach((v) => {
-        expect(v.city).toBe('Montreal');
-      });
-    });
+function seed() {
+  const vehicles = [
+    ...Array.from({ length: 9 }, (_, i) => montreal(i + 1)),
+    ...Array.from({ length: 9 }, (_, i) => toronto(i + 1)),
+    ...Array.from({ length: 9 }, (_, i) => van(i + 1)),
+  ];
+  db._seed('vehicles', vehicles);
+}
 
-    it('should filter by type', () => {
-      const vehicles = Vehicle.getAvailableVehicles(null, TripMode.BIKE_SHARING);
-      expect(vehicles.length).toBeGreaterThan(0);
-      vehicles.forEach((v) => {
-        expect(v.type).toBe(TripMode.BIKE_SHARING);
-      });
-    });
+beforeEach(() => { db._reset(); seed(); });
 
-    it('should filter by both city and type', () => {
-      const vehicles = Vehicle.getAvailableVehicles('Toronto', TripMode.SCOOTER_SHARING);
-      expect(vehicles.length).toBeGreaterThan(0);
-      vehicles.forEach((v) => {
-        expect(v.city).toBe('Toronto');
-        expect(v.type).toBe(TripMode.SCOOTER_SHARING);
-      });
-    });
+describe('Vehicle.getAvailableVehicles()', () => {
+  it('returns all available vehicles when no filters', async () => {
+    const vehicles = await Vehicle.getAvailableVehicles();
+    expect(vehicles.length).toBeGreaterThan(0);
+    vehicles.forEach(v => expect(v.status).toBe(VehicleStatus.AVAILABLE));
+  });
 
-    it('should return empty array for nonexistent city', () => {
-      const vehicles = Vehicle.getAvailableVehicles('Atlantis');
-      expect(vehicles).toEqual([]);
+  it('filters by city', async () => {
+    const vehicles = await Vehicle.getAvailableVehicles('Montreal');
+    expect(vehicles.length).toBeGreaterThan(0);
+    vehicles.forEach(v => expect(v.city).toBe('Montreal'));
+  });
+
+  it('filters by type', async () => {
+    const vehicles = await Vehicle.getAvailableVehicles(null, TripMode.BIKE_SHARING);
+    expect(vehicles.length).toBeGreaterThan(0);
+    vehicles.forEach(v => expect(v.type).toBe(TripMode.BIKE_SHARING));
+  });
+
+  it('filters by both city and type', async () => {
+    const vehicles = await Vehicle.getAvailableVehicles('Toronto', TripMode.SCOOTER_SHARING);
+    expect(vehicles.length).toBeGreaterThan(0);
+    vehicles.forEach(v => {
+      expect(v.city).toBe('Toronto');
+      expect(v.type).toBe(TripMode.SCOOTER_SHARING);
     });
   });
 
-  describe('reserveVehicle', () => {
-    it('should reserve an available vehicle', () => {
-      const vehicles = Vehicle.getAvailableVehicles('Montreal');
-      const vehicle = Vehicle.reserveVehicle(vehicles[0].id);
-      expect(vehicle.status).toBe(VehicleStatus.RESERVED);
-      // Clean up
-      Vehicle.releaseVehicle(vehicles[0].id);
-    });
+  it('returns empty array for nonexistent city', async () => {
+    const vehicles = await Vehicle.getAvailableVehicles('Atlantis');
+    expect(vehicles).toEqual([]);
+  });
+});
 
-    it('should throw NOT_FOUND for nonexistent vehicle', () => {
-      expect(() => Vehicle.reserveVehicle('nonexistent')).toThrow('not found');
-    });
-
-    it('should throw CONFLICT for already reserved vehicle', () => {
-      const vehicles = Vehicle.getAvailableVehicles('Montreal');
-      Vehicle.reserveVehicle(vehicles[0].id);
-      expect(() => Vehicle.reserveVehicle(vehicles[0].id)).toThrow('not available');
-      // Clean up
-      Vehicle.releaseVehicle(vehicles[0].id);
-    });
+describe('Vehicle.reserveVehicle()', () => {
+  it('reserves an available vehicle', async () => {
+    const vehicle = await Vehicle.reserveVehicle('mtl-1');
+    expect(vehicle.status).toBe(VehicleStatus.RESERVED);
   });
 
-  describe('releaseVehicle', () => {
-    it('should release a reserved vehicle', () => {
-      const vehicles = Vehicle.getAvailableVehicles('Montreal');
-      Vehicle.reserveVehicle(vehicles[0].id);
-      const vehicle = Vehicle.releaseVehicle(vehicles[0].id);
-      expect(vehicle.status).toBe(VehicleStatus.AVAILABLE);
-    });
-
-    it('should throw NOT_FOUND for nonexistent vehicle', () => {
-      expect(() => Vehicle.releaseVehicle('nonexistent')).toThrow('not found');
-    });
+  it('throws NOT_FOUND for nonexistent vehicle', async () => {
+    await expect(Vehicle.reserveVehicle('nonexistent')).rejects.toThrow('not found');
   });
 
-  describe('findAll', () => {
-    it('should return seeded vehicles', () => {
-      const all = Vehicle.findAll();
-      expect(all.length).toBeGreaterThanOrEqual(27);
-    });
+  it('throws CONFLICT for already reserved vehicle', async () => {
+    await Vehicle.reserveVehicle('mtl-1');
+    await expect(Vehicle.reserveVehicle('mtl-1')).rejects.toThrow('not available');
+  });
+});
 
-    it('should filter by status', () => {
-      const results = Vehicle.findAll({ status: VehicleStatus.AVAILABLE });
-      results.forEach((v) => expect(v.status).toBe(VehicleStatus.AVAILABLE));
-    });
+describe('Vehicle.releaseVehicle()', () => {
+  it('releases a reserved vehicle', async () => {
+    await Vehicle.reserveVehicle('mtl-1');
+    const vehicle = await Vehicle.releaseVehicle('mtl-1');
+    expect(vehicle.status).toBe(VehicleStatus.AVAILABLE);
   });
 
-  describe('findById', () => {
-    it('should return vehicle by id', () => {
-      const all = Vehicle.findAll();
-      const found = Vehicle.findById(all[0].id);
-      expect(found).toEqual(all[0]);
-    });
+  it('throws NOT_FOUND for nonexistent vehicle', async () => {
+    await expect(Vehicle.releaseVehicle('nonexistent')).rejects.toThrow('not found');
+  });
+});
 
-    it('should return null for unknown id', () => {
-      expect(Vehicle.findById('nonexistent')).toBeNull();
-    });
+describe('Vehicle.findAll()', () => {
+  it('returns all seeded vehicles', async () => {
+    const all = await Vehicle.findAll();
+    expect(all.length).toBe(27);
+  });
+
+  it('filters by status', async () => {
+    await Vehicle.reserveVehicle('mtl-1');
+    const reserved = await Vehicle.findAll({ status: VehicleStatus.RESERVED });
+    expect(reserved.length).toBe(1);
+    expect(reserved[0].id).toBe('mtl-1');
+  });
+});
+
+describe('Vehicle.findById()', () => {
+  it('returns a vehicle by id', async () => {
+    const vehicle = await Vehicle.findById('tor-1');
+    expect(vehicle).not.toBeNull();
+    expect(vehicle.id).toBe('tor-1');
+  });
+
+  it('returns null for unknown id', async () => {
+    const vehicle = await Vehicle.findById('nonexistent');
+    expect(vehicle).toBeNull();
   });
 });

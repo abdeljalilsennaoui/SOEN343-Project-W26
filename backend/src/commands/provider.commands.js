@@ -48,7 +48,8 @@ class UpdateVehicleCommand extends ICommand {
     const data = await this.receiver.updateVehicle(
       request.payload.vehicleId,
       request.userId,
-      request.payload.fields
+      request.payload.fields,
+      request.payload.role
     );
     return MobilityResponse.ok(data);
   }
@@ -65,7 +66,8 @@ class DeactivateVehicleCommand extends ICommand {
   async execute(request) {
     const data = await this.receiver.removeVehicle(
       request.payload.vehicleId,
-      request.userId
+      request.userId,
+      request.payload.role
     );
     return MobilityResponse.ok(data);
   }

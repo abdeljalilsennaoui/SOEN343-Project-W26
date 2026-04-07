@@ -196,20 +196,22 @@ class MobilityService {
   /**
    * Update fields of an existing vehicle. Enforces ownership.
    */
-  async updateVehicle(vehicleId, providerId, fields) {
+  async updateVehicle(vehicleId, providerId, fields, role) {
     const vehicle = await MobilityDataGateway.findVehicle(vehicleId);
     if (!vehicle) throw ApiError.notFound(`Vehicle ${vehicleId} not found`);
-    if (vehicle.providerId !== providerId) throw ApiError.forbidden('You do not own this vehicle');
+    const isAdmin = role === UserRole.CITY_ADMINISTRATOR || role === UserRole.SYSTEM_ADMINISTRATOR;
+    if (!isAdmin && vehicle.providerId !== providerId) throw ApiError.forbidden('You do not own this vehicle');
     return MobilityDataGateway.updateVehicle(vehicleId, fields);
   }
 
   /**
    * Deactivate (soft-delete) a vehicle. Enforces ownership.
    */
-  async removeVehicle(vehicleId, providerId) {
+  async removeVehicle(vehicleId, providerId, role) {
     const vehicle = await MobilityDataGateway.findVehicle(vehicleId);
     if (!vehicle) throw ApiError.notFound(`Vehicle ${vehicleId} not found`);
-    if (vehicle.providerId !== providerId) throw ApiError.forbidden('You do not own this vehicle');
+    const isAdmin = role === UserRole.CITY_ADMINISTRATOR || role === UserRole.SYSTEM_ADMINISTRATOR;
+    if (!isAdmin && vehicle.providerId !== providerId) throw ApiError.forbidden('You do not own this vehicle');
     if (vehicle.status === VehicleStatus.OUT_OF_SERVICE) return vehicle;
     // Remove the paired mobilityOption so it disappears from search.
     await MobilityDataGateway.removeMobilityOption(vehicleId).catch(() => {});

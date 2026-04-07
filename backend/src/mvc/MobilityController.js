@@ -82,12 +82,14 @@ class MobilityController {
     await this._dispatch(MobilityRequest.TYPES.UPDATE_VEHICLE, req.uid, {
       vehicleId: req.params.vehicleId,
       fields: req.body,
+      role: req.role,
     }, res, next);
   }
 
   async deactivateVehicle(req, res, next) {
     await this._dispatch(MobilityRequest.TYPES.DEACTIVATE_VEHICLE, req.uid, {
       vehicleId: req.params.vehicleId,
+      role: req.role,
     }, res, next);
   }
 

@@ -19,7 +19,7 @@ class BookingState {
     throw new Error('BookingState.getName() must be implemented');
   }
 
-  toActive(context) {
+  toActive(_context) {
     throw new ApiError(
       'DRAFT_INVALID_STATE',
       `Cannot transition to ACTIVE from ${this.getName()}.`,
@@ -27,7 +27,7 @@ class BookingState {
     );
   }
 
-  toComplete(context) {
+  toComplete(_context) {
     throw new ApiError(
       'DRAFT_INVALID_STATE',
       `Cannot transition to COMPLETE from ${this.getName()}.`,
@@ -35,7 +35,7 @@ class BookingState {
     );
   }
 
-  toFailed(context) {
+  toFailed(_context) {
     throw new ApiError(
       'DRAFT_INVALID_STATE',
       `Cannot transition to FAILED from ${this.getName()}.`,

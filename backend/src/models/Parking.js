@@ -1,4 +1,3 @@
-const { v4: uuidv4 } = require('uuid');
 const { ParkingStatus } = require('./enums');
 const ApiError = require('./ApiError');
 const db = require('../lib/firestore');

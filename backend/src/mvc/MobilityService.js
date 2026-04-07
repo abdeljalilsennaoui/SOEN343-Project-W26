@@ -19,7 +19,6 @@ const EventBus = require('../lib/EventBus');
 const { createPaymentGateway, createTransitGateway } = require('../gateways');
 const ApiError = require('../models/ApiError');
 const { BookingStatus, ReceiptStatus, VehicleStatus, TripMode, UserRole } = require('../models/enums');
-const { v4: uuidv4 } = require('uuid');
 
 // Visitor Pattern — typed event objects (each carries accept() for double dispatch)
 const ReservationCreatedEvent = require('../analytics/events/ReservationCreatedEvent');

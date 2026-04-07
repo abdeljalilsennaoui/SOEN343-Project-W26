@@ -23,7 +23,7 @@ const app     = require('../../src/app');
 function seedVehicles() {
   const cities  = ['Montreal', 'Toronto', 'Vancouver'];
   const types   = ['BIKE_SHARING', 'SCOOTER_SHARING', 'CAR_SHARING'];
-  const vehicles = cities.flatMap((city, ci) =>
+  const vehicles = cities.flatMap((city, _ci) =>
     types.map((type, ti) => ({
       id: `${city.toLowerCase().slice(0, 3)}-${ti + 1}`,
       city,

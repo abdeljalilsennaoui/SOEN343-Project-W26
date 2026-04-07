@@ -5,7 +5,7 @@ const Parking = require('../../../src/models/Parking');
 
 function seed() {
   const cities = ['Montreal', 'Toronto', 'Vancouver'];
-  const facilities = cities.flatMap((city, ci) => [
+  const facilities = cities.flatMap((city, _ci) => [
     { id: `fac-${city.toLowerCase()}-1`, city, name: `${city} Facility 1` },
     { id: `fac-${city.toLowerCase()}-2`, city, name: `${city} Facility 2` },
   ]);

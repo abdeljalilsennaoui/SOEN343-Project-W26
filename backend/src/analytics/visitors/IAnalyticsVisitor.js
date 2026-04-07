@@ -14,7 +14,7 @@ class IAnalyticsVisitor {
   /**
    * @param {import('../events/AnalyticsEvent')} event
    */
-  visit(event) {
+  visit(_event) {
     throw new Error('IAnalyticsVisitor.visit() must be implemented');
   }
 }

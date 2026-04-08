@@ -56,6 +56,9 @@ jobs:
           name: backend-coverage
           path: backend/coverage
 
+      - name: Fix lcov paths
+        run: sed -i 's|SF:src/|SF:backend/src/|g' backend/coverage/lcov.info
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:

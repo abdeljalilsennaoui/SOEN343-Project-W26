@@ -11,6 +11,7 @@ module.exports = {
   moduleNameMapper: {
     '^firebase-admin$': '<rootDir>/__mocks__/firebase-admin.js',
   },
+  coverageReporters: ['lcov', 'text', 'text-summary'],
   collectCoverageFrom: [
     'src/analytics/**/*.js',
     'src/lib/**/*.js',

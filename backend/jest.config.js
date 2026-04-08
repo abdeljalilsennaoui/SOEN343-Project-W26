@@ -13,15 +13,36 @@ module.exports = {
   },
   coverageReporters: ['lcov', 'text', 'text-summary'],
   collectCoverageFrom: [
+    // Analytics layer
     'src/analytics/**/*.js',
-    'src/lib/**/*.js',
+    // State machine + event bus (no Firebase dependency)
+    'src/lib/BookingStateMachine.js',
+    'src/lib/EventBus.js',
+    'src/lib/states/**/*.js',
+    // MVC — unit-testable pieces
     'src/mvc/MobilityDataMapper.js',
+    'src/mvc/MobilityRequest.js',
+    'src/mvc/MobilityResponse.js',
     'src/mvc/MobilityService.js',
+    // Commands (all concrete command classes)
+    'src/commands/ICommand.js',
+    'src/commands/booking.commands.js',
+    'src/commands/vehicle.commands.js',
+    'src/commands/parking.commands.js',
+    'src/commands/transit.commands.js',
+    'src/commands/analytics.commands.js',
+    'src/commands/provider.commands.js',
+    // Services with no Firestore dependency
     'src/services/AvailabilityService.js',
     'src/services/PricingService.js',
+    // Pricing strategies
     'src/strategies/**/*.js',
+    // Pure error class
     'src/models/ApiError.js',
-    '!src/server.js',
+    // Excluded: firebaseAdmin.js, firestore.js, CommandRegistry.js,
+    // MobilityController, MobilityPresenter, MobilityRequestHandler,
+    // MobilityDataGateway, routes/, middleware/, controllers/, gateways/,
+    // models/(Firestore), services/(Firestore-dependent), scripts/
   ],
   coverageDirectory: 'coverage',
 };

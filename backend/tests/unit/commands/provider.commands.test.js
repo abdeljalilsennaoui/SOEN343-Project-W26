@@ -8,7 +8,10 @@
 const MobilityRequest  = require('../../../src/mvc/MobilityRequest');
 const MobilityResponse = require('../../../src/mvc/MobilityResponse');
 const { UserRole }     = require('../../../src/models/enums');
+const ICommand         = require('../../../src/commands/ICommand');
 const {
+  GetProviderVehiclesCommand,
+  AddVehicleCommand,
   UpdateVehicleCommand,
   DeactivateVehicleCommand,
 } = require('../../../src/commands/provider.commands');
@@ -24,6 +27,51 @@ function makeReceiver(overrides = {}) {
 function makeRequest(type, userId, payload) {
   return new MobilityRequest(type, userId, payload);
 }
+
+// ── ICommand (abstract) ──────────────────────────────────────────────────────
+
+describe('ICommand', () => {
+  it('execute() throws when called on the base class', async () => {
+    const cmd = new ICommand();
+    await expect(cmd.execute({})).rejects.toThrow('ICommand.execute() must be implemented');
+  });
+});
+
+// ── GetProviderVehiclesCommand ───────────────────────────────────────────────
+
+describe('GetProviderVehiclesCommand', () => {
+  it('calls receiver.getProviderVehicles with userId and role', async () => {
+    const vehicles = [{ id: 'v-1' }];
+    const receiver = { getProviderVehicles: jest.fn().mockResolvedValue(vehicles) };
+    const cmd = new GetProviderVehiclesCommand(receiver);
+    const req = new MobilityRequest(MobilityRequest.TYPES.GET_PROVIDER_VEHICLES, 'provider-uid', { role: UserRole.MOBILITY_PROVIDER });
+
+    const res = await cmd.execute(req);
+
+    expect(receiver.getProviderVehicles).toHaveBeenCalledWith('provider-uid', UserRole.MOBILITY_PROVIDER);
+    expect(res).toBeInstanceOf(MobilityResponse);
+    expect(res.statusCode).toBe(200);
+    expect(res.data).toEqual(vehicles);
+  });
+});
+
+// ── AddVehicleCommand ────────────────────────────────────────────────────────
+
+describe('AddVehicleCommand', () => {
+  it('calls receiver.addVehicle with userId and payload, returns 201', async () => {
+    const vehicle = { id: 'v-new', city: 'Montreal', type: 'BIKE_SHARING' };
+    const receiver = { addVehicle: jest.fn().mockResolvedValue(vehicle) };
+    const cmd = new AddVehicleCommand(receiver);
+    const payload = { city: 'Montreal', type: 'BIKE_SHARING', pricePerMin: 0.1 };
+    const req = new MobilityRequest(MobilityRequest.TYPES.ADD_VEHICLE, 'provider-uid', payload);
+
+    const res = await cmd.execute(req);
+
+    expect(receiver.addVehicle).toHaveBeenCalledWith('provider-uid', payload);
+    expect(res.statusCode).toBe(201);
+    expect(res.data).toEqual(vehicle);
+  });
+});
 
 // ── UpdateVehicleCommand ─────────────────────────────────────────────────────
 

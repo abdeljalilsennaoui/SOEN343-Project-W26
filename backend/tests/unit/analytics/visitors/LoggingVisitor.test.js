@@ -1,5 +1,6 @@
 const ReservationCreatedEvent = require('../../../../src/analytics/events/ReservationCreatedEvent');
 const RideJoinedEvent = require('../../../../src/analytics/events/RideJoinedEvent');
+const IAnalyticsVisitor = require('../../../../src/analytics/visitors/IAnalyticsVisitor');
 // Import the singleton
 const loggingVisitor = require('../../../../src/analytics/visitors/LoggingVisitor');
 
@@ -40,5 +41,12 @@ describe('LoggingVisitor', () => {
     const event = new RideJoinedEvent({ bookingId: 'b1', passengerId: 'p1' });
     loggingVisitor.visit(event);
     expect(consoleSpy.mock.calls[0][0]).toMatch(/^\[analytics\]/);
+  });
+});
+
+describe('IAnalyticsVisitor', () => {
+  it('visit() throws when called on the base class', () => {
+    const visitor = new IAnalyticsVisitor();
+    expect(() => visitor.visit({})).toThrow('IAnalyticsVisitor.visit() must be implemented');
   });
 });

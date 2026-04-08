@@ -2,6 +2,7 @@ const AnalyticsEvent = require('../../../src/analytics/events/AnalyticsEvent');
 const ReservationCreatedEvent = require('../../../src/analytics/events/ReservationCreatedEvent');
 const BookingConfirmedEvent = require('../../../src/analytics/events/BookingConfirmedEvent');
 const RideJoinedEvent = require('../../../src/analytics/events/RideJoinedEvent');
+const TransitQueryEvent = require('../../../src/analytics/events/TransitQueryEvent');
 
 describe('AnalyticsEvent (abstract base)', () => {
   it('type getter throws if not overridden', () => {
@@ -108,6 +109,35 @@ describe('RideJoinedEvent', () => {
   });
 
   it('accept() calls visitor.visit(this)', () => {
+    const visitor = { visit: jest.fn() };
+    event.accept(visitor);
+    expect(visitor.visit).toHaveBeenCalledWith(event);
+  });
+});
+
+describe('TransitQueryEvent', () => {
+  it('has type TRANSIT_QUERY', () => {
+    const event = new TransitQueryEvent({ city: 'Montreal', line: 'Green' });
+    expect(event.type).toBe('TRANSIT_QUERY');
+  });
+
+  it('exposes city', () => {
+    const event = new TransitQueryEvent({ city: 'Toronto', line: '1' });
+    expect(event.city).toBe('Toronto');
+  });
+
+  it('metadata contains the line', () => {
+    const event = new TransitQueryEvent({ city: 'Vancouver', line: 'Canada' });
+    expect(event.metadata).toEqual({ line: 'Canada' });
+  });
+
+  it('metadata line is null when not provided', () => {
+    const event = new TransitQueryEvent({ city: 'Montreal', line: null });
+    expect(event.metadata.line).toBeNull();
+  });
+
+  it('accept() calls visitor.visit(this)', () => {
+    const event = new TransitQueryEvent({ city: 'Montreal', line: 'Orange' });
     const visitor = { visit: jest.fn() };
     event.accept(visitor);
     expect(visitor.visit).toHaveBeenCalledWith(event);

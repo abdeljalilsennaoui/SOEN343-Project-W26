@@ -1,5 +1,4 @@
 const MobilityRequest  = require('../../../src/mvc/MobilityRequest');
-const MobilityResponse = require('../../../src/mvc/MobilityResponse');
 const {
   GetParkingFacilitiesCommand,
   GetFacilitySpotsCommand,

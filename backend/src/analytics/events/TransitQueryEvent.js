@@ -16,6 +16,7 @@ class TransitQueryEvent extends AnalyticsEvent {
   get type() { return 'TRANSIT_QUERY'; }
   get city() { return this._city; }
   get metadata() {
+    // Preserve the queried line alongside the event type so downstream visitors can aggregate route demand.
     return { line: this._line };
   }
 

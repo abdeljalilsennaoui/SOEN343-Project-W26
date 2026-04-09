@@ -635,7 +635,7 @@ Context: MobilityService calls paymentGateway.charge()
 │ + execute(request: MobilityRequest)                  │
 │       : Promise<MobilityResponse>                    │
 └──────────────────────┬──────────────────────────────┘
-                       │ extends (19 concrete commands)
+                       │ extends (23 concrete commands)
           ┌────────────┼──────────────┬────────────────┐
           ▼            ▼              ▼                ▼
 ┌─────────────────┐ ┌─────────────┐ ┌──────────────┐ ...
@@ -658,7 +658,9 @@ Context: MobilityService calls paymentGateway.charge()
 │    'CONFIRM_BOOKING'      → ConfirmBookingCommand    │
 │    'COMPLETE_BOOKING'     → CompleteBookingCommand   │
 │    'GET_MY_BOOKINGS'      → GetMyBookingsCommand     │
-│    ... 14 more entries (19 total)                    │
+│    ... 18 more entries (23 total, including          │
+│    GET_NEARBY_PARKINGS, LIST_RIDE_SHARES,            │
+│    JOIN_RIDE, LEAVE_RIDE)                            │
 │─────────────────────────────────────────────────────│
 │  MobilityService injected into every command at init │
 └─────────────────────────────────────────────────────┘

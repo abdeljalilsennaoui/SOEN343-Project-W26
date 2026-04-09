@@ -690,7 +690,7 @@ Context: MobilityService calls paymentGateway.charge()
 │ + get metadata(): object  (default: {})              │
 │ + accept(visitor)         (abstract)                 │
 └──────────────────────┬──────────────────────────────┘
-                       │ extends (8 concrete events)
+                       │ extends (9 concrete events)
     ┌──────────────────┼──────────────────────────┐
     ▼                  ▼                          ▼
 ┌──────────────────┐ ┌────────────────────┐     ...
@@ -705,7 +705,7 @@ Context: MobilityService calls paymentGateway.charge()
 └──────────────────┘
 (Also: PaymentProcessedEvent, VehicleReturnedEvent,
  ParkingReservedEvent, ParkingReleasedEvent,
- TransitQueryEvent, GatewayCallEvent)
+ TransitQueryEvent, GatewayCallEvent, RideJoinedEvent)
 
 ┌─────────────────────────────────────────────────────┐
 │  <<interface>> IAnalyticsVisitor                     │

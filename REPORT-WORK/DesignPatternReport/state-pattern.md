@@ -1,0 +1,5 @@
+# State Pattern
+
+---
+
+The state pattern is a good way to manage the booking lifecycle in the system in a more controlled way. Instead of keeping all the transition rules for the booking statuses inside of the MobilityService with many conditional statements, each state is represented by its own class so the system can handle transitions depending on the current state. In SUMMS, the booking can move between statuses like `DRAFT`, `ACTIVE`, `COMPLETE`, and `FAILED`, and `BookingStateMachine` acts like the context that stores the current state and delegates the transition request to it. That way, the transition logic is better organized and each state can control which moves are valid or not. Without this pattern, the service layer would depend on too many conditional checks for booking transitions, which would make the code more tightly coupled and harder to maintain as the system grows.

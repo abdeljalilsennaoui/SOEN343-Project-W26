@@ -385,10 +385,10 @@ class CreateBookingDraftCommand extends ICommand {
 const registry = new Map([
   ['CREATE_BOOKING_DRAFT', new CreateBookingDraftCommand(MobilityService)],
   ['CONFIRM_BOOKING',      new ConfirmBookingCommand(MobilityService)],
-  // ... 20 more (including LIST_RIDE_SHARES, JOIN_RIDE, LEAVE_RIDE)
+  // ... 21 more (including GET_NEARBY_PARKINGS, LIST_RIDE_SHARES, JOIN_RIDE, LEAVE_RIDE)
 ]);
 
-// MobilityRequestHandler — invoker (replaces 19-case switch statement)
+// MobilityRequestHandler — invoker (replaces 23-case switch statement)
 async handle(request) {
   const command = registry.get(request.type);
   if (!command) return MobilityResponse.fail(`Unknown request type: ${request.type}`, 400);

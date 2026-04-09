@@ -99,6 +99,7 @@ The frontend Vite dev server proxies `/api` requests to the backend automaticall
 ### Analytics (MOBILITY_PROVIDER | CITY_ADMINISTRATOR | SYSTEM_ADMINISTRATOR)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| GET | `/analytics` | Raw analytics events (legacy endpoint) |
 | GET | `/analytics/rentals` | Rental analytics |
 | GET | `/analytics/gateway` | Gateway call analytics |
 

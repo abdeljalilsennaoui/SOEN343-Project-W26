@@ -3,6 +3,7 @@
 SOEN 343 – Software Architecture and Design (Phase II)
 
 A unified platform for urban mobility services: bike-sharing, car-sharing, scooter rentals, parking, and public transit information.
+<!-- Contributor note: this README is intentionally high-level and points to setup and architecture details elsewhere in the repo. -->
 
 ## Tech Stack
 

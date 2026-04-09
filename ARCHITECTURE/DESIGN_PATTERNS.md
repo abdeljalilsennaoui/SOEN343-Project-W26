@@ -7,6 +7,8 @@
 
 ## MVC Request Flow
 
+<!-- Reader note: this flow is a navigation aid for the architecture write-up, not a runtime trace with every supporting helper shown. -->
+
 ```
 View (React)
   → MobilityController           [Controller]

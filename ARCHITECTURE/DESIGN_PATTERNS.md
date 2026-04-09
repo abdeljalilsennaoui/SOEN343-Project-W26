@@ -352,7 +352,7 @@ const totalPrice = PricingService.calculatePrice(option, startTime, endTime);
 | Role | Class |
 |---|---|
 | Command interface | `commands/ICommand.js` |
-| Concrete commands | `commands/booking.commands.js`, `vehicle.commands.js`, `provider.commands.js`, `parking.commands.js`, `transit.commands.js`, `analytics.commands.js` (22 command classes total) |
+| Concrete commands | `commands/booking.commands.js`, `vehicle.commands.js`, `provider.commands.js`, `parking.commands.js`, `transit.commands.js`, `analytics.commands.js` (23 command classes total) |
 | Receiver | `mvc/MobilityService.js` — injected into every command via constructor |
 | Registry | `commands/CommandRegistry.js` — maps request type string → command instance |
 | Invoker | `mvc/MobilityRequestHandler.js` — looks up and calls `execute()` |

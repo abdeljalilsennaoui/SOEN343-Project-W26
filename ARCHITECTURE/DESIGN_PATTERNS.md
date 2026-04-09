@@ -412,7 +412,7 @@ async handle(request) {
 | Role | Class |
 |---|---|
 | Element interface | `analytics/events/AnalyticsEvent.js` — defines `accept(visitor)` |
-| Concrete elements (8) | `ReservationCreatedEvent`, `BookingConfirmedEvent`, `PaymentProcessedEvent`, `VehicleReturnedEvent`, `ParkingReservedEvent`, `ParkingReleasedEvent`, `TransitQueryEvent`, `GatewayCallEvent` |
+| Concrete elements (9) | `ReservationCreatedEvent`, `BookingConfirmedEvent`, `PaymentProcessedEvent`, `VehicleReturnedEvent`, `ParkingReservedEvent`, `ParkingReleasedEvent`, `TransitQueryEvent`, `GatewayCallEvent`, `RideJoinedEvent` |
 | Visitor interface | `analytics/visitors/IAnalyticsVisitor.js` — declares `visit(event)` |
 | Concrete visitor A | `analytics/visitors/PersistenceVisitor.js` — persists to Firestore |
 | Concrete visitor B | `analytics/visitors/LoggingVisitor.js` — logs to stdout |

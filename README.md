@@ -93,7 +93,7 @@ The frontend Vite dev server proxies `/api` requests to the backend automaticall
 | POST | `/parking/spots/reserve` | Reserve a spot |
 | POST | `/parking/spots/release` | Release a spot |
 | GET | `/parking/nearby?lat=&lng=&radius=&maxResults=` | Nearby parkings (OverpassParkingGateway) |
-| GET | `/transit/schedule?city=&line=` | Transit schedule |
+| GET | `/transit/schedule?city=&line=` | Transit schedule (GtfsTransitGateway) |
 | GET | `/transit/stops/nearby?lat=&lng=` | Nearby transit stops |
 
 ### Analytics

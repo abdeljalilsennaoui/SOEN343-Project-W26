@@ -302,11 +302,15 @@ View displays result to user
 │  Bookings:                                           │
 │ + findBooking(id)                                    │
 │ + findBookingsByUser(userId)                         │
+│ + findAllBookings()                                  │
+│ + findActiveAndDraftBookings()                       │
+│ + findActiveRideShares()                             │
 │ + saveBooking(data)                                  │
 │ + updateBooking(id, updates)                         │
 │─────────────────────────────────────────────────────│
 │  Vehicles:                                           │
 │ + findVehicles(filters)                              │
+│ + findAllVehicles(filters)                           │
 │ + findVehicle(id)                                    │
 │ + saveVehicle(data)                                  │
 │ + updateVehicle(id, fields)                          │
@@ -319,6 +323,8 @@ View displays result to user
 │  Mobility Options:                                   │
 │ + findMobilityOptions(filters)                       │
 │ + findMobilityOption(id)                             │
+│ + saveMobilityOption(data)                           │
+│ + removeMobilityOption(id)                           │
 │─────────────────────────────────────────────────────│
 │  Parking:                                            │
 │ + findParkingFacilities(city)                        │
@@ -326,17 +332,15 @@ View displays result to user
 │ + findAvailableSpots(city)                           │
 │ + reserveSpot(spotId)                                │
 │ + releaseSpot(spotId)                                │
+│ + findNearbyParkings(center, radius, maxResults)     │
 │─────────────────────────────────────────────────────│
 │  Receipts:                                           │
 │ + saveReceipt(data)                                  │
 │ + findReceiptByBooking(bookingId)                    │
 │─────────────────────────────────────────────────────│
 │  Analytics:                                          │
-│ + getRentalAnalytics()                               │
+│ + getRentalAnalytics(userId, role)                   │
 │ + getGatewayAnalytics()                              │
-│─────────────────────────────────────────────────────│
-│  Ride Sharing:                                       │
-│ + findActiveRideShares()                             │
 │─────────────────────────────────────────────────────│
 │  Delegates to: MobilityDataMapper + Firestore models │
 └─────────────────────────────────────────────────────┘

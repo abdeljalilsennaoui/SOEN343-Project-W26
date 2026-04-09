@@ -96,7 +96,7 @@ The frontend Vite dev server proxies `/api` requests to the backend automaticall
 | GET | `/transit/schedule?city=&line=` | Transit schedule (GtfsTransitGateway) |
 | GET | `/transit/stops/nearby?lat=&lng=` | Nearby transit stops |
 
-### Analytics
+### Analytics (MOBILITY_PROVIDER | CITY_ADMINISTRATOR | SYSTEM_ADMINISTRATOR)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/analytics/rentals` | Rental analytics |

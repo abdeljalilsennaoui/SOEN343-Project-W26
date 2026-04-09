@@ -21,6 +21,9 @@ A unified platform for urban mobility services: bike-sharing, car-sharing, scoot
 ├── frontend/            React application (Vite)
 ├── backend/             Express API server (MVC)
 ├── ARCHITECTURE/        Class diagram + design patterns docs
+├── REPORT-WORK/         Phase II report artifacts (use cases, overview)
+├── docs/                Diagrams and supporting material
+├── CONTRIBUTING.md      Contribution guide
 └── SETUP.md             Full developer setup guide
 ```
 
@@ -93,12 +96,14 @@ The frontend Vite dev server proxies `/api` requests to the backend automaticall
 | GET | `/parking/spots/available?city=` | List available spots |
 | POST | `/parking/spots/reserve` | Reserve a spot |
 | POST | `/parking/spots/release` | Release a spot |
-| GET | `/transit/schedule?city=&line=` | Transit schedule |
+| GET | `/parking/nearby?lat=&lng=&radius=&maxResults=` | Nearby parkings (OverpassParkingGateway) |
+| GET | `/transit/schedule?city=&line=` | Transit schedule (GtfsTransitGateway) |
 | GET | `/transit/stops/nearby?lat=&lng=` | Nearby transit stops |
 
-### Analytics
+### Analytics (MOBILITY_PROVIDER | CITY_ADMINISTRATOR | SYSTEM_ADMINISTRATOR)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| GET | `/analytics` | Raw analytics events (legacy endpoint) |
 | GET | `/analytics/rentals` | Rental analytics |
 | GET | `/analytics/gateway` | Gateway call analytics |
 
@@ -123,9 +128,11 @@ npm run test:coverage # with coverage report
 
 ## Team — Group 1
 
-- Subaanky Krishnapillai – 40128716
-- Andra Vele – 40175695
-- Mohamed Ahmed – 40229758
-- Quentin Bollore – 40348932
-- Abdeljalil Sennaoui – 40117162
-- Sara Rezene Habte – 40224677
+| Name | Student ID | GitHub |
+|------|------------|--------|
+| Subaanky Krishnapillai | 40128716 | [@Subaanky](https://github.com/Subaanky) |
+| Andra Vele | 40175695 | [@avele24](https://github.com/avele24) |
+| Mohamed Ahmed | 40229758 | [@SSOBHY2](https://github.com/SSOBHY2) |
+| Quentin Bollore | 40348932 | [@quentinbol](https://github.com/quentinbol) |
+| Abdeljalil Sennaoui | 40117162 | [@abdeljalilsennaoui](https://github.com/abdeljalilsennaoui) |
+| Sara Rezene Habte | 40224677 | [@SaraH6734](https://github.com/SaraH6734) |

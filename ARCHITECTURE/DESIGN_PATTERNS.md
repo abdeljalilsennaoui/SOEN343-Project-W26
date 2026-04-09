@@ -101,7 +101,7 @@ module.exports = MobilityRequest;          // callers instantiate per use
 
 `MobilityService` emits typed domain events onto `EventBus` after each significant operation. `AnalyticsListener` subscribes to those events and persists them to Firestore. Neither side imports the other — they share only an event name string.
 
-Events emitted by `MobilityService`: `RESERVATION_CREATED`, `BOOKING_CONFIRMED`, `PAYMENT_PROCESSED`, `VEHICLE_RETURNED`, `PARKING_RESERVED`, `PARKING_RELEASED`, `TRANSIT_QUERY`, `GATEWAY_CALL`, `RIDE_JOINED`.
+Events emitted by `MobilityService`: `RESERVATION_CREATED`, `BOOKING_CONFIRMED`, `PAYMENT_PROCESSED`, `VEHICLE_RETURNED`, `PARKING_RESERVED`, `PARKING_RELEASED`, `TRANSIT_QUERY`, `GATEWAY_CALL`, `RIDE_JOINED`. (`AnalyticsListener` currently subscribes to the first eight; `RIDE_JOINED` is emitted for future wiring — adding the subscription is a one-line change.)
 
 | Event | Emitted when | Key metadata |
 |---|---|---|
@@ -354,7 +354,7 @@ const totalPrice = PricingService.calculatePrice(option, startTime, endTime);
 | Role | Class |
 |---|---|
 | Command interface | `commands/ICommand.js` |
-| Concrete commands | `commands/booking.commands.js`, `vehicle.commands.js`, `provider.commands.js`, `parking.commands.js`, `transit.commands.js`, `analytics.commands.js` (22 command classes total) |
+| Concrete commands | `commands/booking.commands.js`, `vehicle.commands.js`, `provider.commands.js`, `parking.commands.js`, `transit.commands.js`, `analytics.commands.js` (23 command classes total) |
 | Receiver | `mvc/MobilityService.js` — injected into every command via constructor |
 | Registry | `commands/CommandRegistry.js` — maps request type string → command instance |
 | Invoker | `mvc/MobilityRequestHandler.js` — looks up and calls `execute()` |
@@ -387,10 +387,10 @@ class CreateBookingDraftCommand extends ICommand {
 const registry = new Map([
   ['CREATE_BOOKING_DRAFT', new CreateBookingDraftCommand(MobilityService)],
   ['CONFIRM_BOOKING',      new ConfirmBookingCommand(MobilityService)],
-  // ... 20 more (including LIST_RIDE_SHARES, JOIN_RIDE, LEAVE_RIDE)
+  // ... 21 more (including GET_NEARBY_PARKINGS, LIST_RIDE_SHARES, JOIN_RIDE, LEAVE_RIDE)
 ]);
 
-// MobilityRequestHandler — invoker (replaces 19-case switch statement)
+// MobilityRequestHandler — invoker (replaces 23-case switch statement)
 async handle(request) {
   const command = registry.get(request.type);
   if (!command) return MobilityResponse.fail(`Unknown request type: ${request.type}`, 400);
@@ -414,7 +414,7 @@ async handle(request) {
 | Role | Class |
 |---|---|
 | Element interface | `analytics/events/AnalyticsEvent.js` — defines `accept(visitor)` |
-| Concrete elements (8) | `ReservationCreatedEvent`, `BookingConfirmedEvent`, `PaymentProcessedEvent`, `VehicleReturnedEvent`, `ParkingReservedEvent`, `ParkingReleasedEvent`, `TransitQueryEvent`, `GatewayCallEvent` |
+| Concrete elements (9) | `ReservationCreatedEvent`, `BookingConfirmedEvent`, `PaymentProcessedEvent`, `VehicleReturnedEvent`, `ParkingReservedEvent`, `ParkingReleasedEvent`, `TransitQueryEvent`, `GatewayCallEvent`, `RideJoinedEvent` |
 | Visitor interface | `analytics/visitors/IAnalyticsVisitor.js` — declares `visit(event)` |
 | Concrete visitor A | `analytics/visitors/PersistenceVisitor.js` — persists to Firestore |
 | Concrete visitor B | `analytics/visitors/LoggingVisitor.js` — logs to stdout |

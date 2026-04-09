@@ -92,6 +92,7 @@ View displays result to user
 │ + getAvailableSpots(req, res, next)                  │
 │ + reserveParkingSpot(req, res, next)                 │
 │ + releaseParkingSpot(req, res, next)                 │
+│ + getNearbyParkings(req, res, next)                  │
 │ + getTransitSchedule(req, res, next)                 │
 │ + getNearbyStops(req, res, next)                     │
 │ + getRentalAnalytics(req, res, next)                 │
@@ -145,9 +146,10 @@ View displays result to user
 │        GET_PARKING_FACILITIES, GET_FACILITY_SPOTS,   │
 │        GET_AVAILABLE_SPOTS,                          │
 │        RESERVE_PARKING_SPOT, RELEASE_PARKING_SPOT,   │
+│        GET_NEARBY_PARKINGS,                          │
 │        GET_TRANSIT_SCHEDULE, GET_NEARBY_STOPS,       │
 │        GET_RENTAL_ANALYTICS, GET_GATEWAY_ANALYTICS,  │
-│        LIST_RIDE_SHARES, JOIN_RIDE, LEAVE_RIDE        │
+│        LIST_RIDE_SHARES, JOIN_RIDE, LEAVE_RIDE       │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -211,6 +213,7 @@ View displays result to user
 │ + getAvailableSpots(city)                            │
 │ + reserveParkingSpot(spotId)                         │
 │ + releaseParkingSpot(spotId)                         │
+│ + getNearbyParkings(center, radius, maxResults)      │
 │ + getTransitSchedule(city, line)                     │
 │ + getNearbyStops(lat, lng)                           │
 │─────────────────────────────────────────────────────│
@@ -299,11 +302,15 @@ View displays result to user
 │  Bookings:                                           │
 │ + findBooking(id)                                    │
 │ + findBookingsByUser(userId)                         │
+│ + findAllBookings()                                  │
+│ + findActiveAndDraftBookings()                       │
+│ + findActiveRideShares()                             │
 │ + saveBooking(data)                                  │
 │ + updateBooking(id, updates)                         │
 │─────────────────────────────────────────────────────│
 │  Vehicles:                                           │
 │ + findVehicles(filters)                              │
+│ + findAllVehicles(filters)                           │
 │ + findVehicle(id)                                    │
 │ + saveVehicle(data)                                  │
 │ + updateVehicle(id, fields)                          │
@@ -316,6 +323,8 @@ View displays result to user
 │  Mobility Options:                                   │
 │ + findMobilityOptions(filters)                       │
 │ + findMobilityOption(id)                             │
+│ + saveMobilityOption(data)                           │
+│ + removeMobilityOption(id)                           │
 │─────────────────────────────────────────────────────│
 │  Parking:                                            │
 │ + findParkingFacilities(city)                        │
@@ -323,17 +332,15 @@ View displays result to user
 │ + findAvailableSpots(city)                           │
 │ + reserveSpot(spotId)                                │
 │ + releaseSpot(spotId)                                │
+│ + findNearbyParkings(center, radius, maxResults)     │
 │─────────────────────────────────────────────────────│
 │  Receipts:                                           │
 │ + saveReceipt(data)                                  │
 │ + findReceiptByBooking(bookingId)                    │
 │─────────────────────────────────────────────────────│
 │  Analytics:                                          │
-│ + getRentalAnalytics()                               │
+│ + getRentalAnalytics(userId, role)                   │
 │ + getGatewayAnalytics()                              │
-│─────────────────────────────────────────────────────│
-│  Ride Sharing:                                       │
-│ + findActiveRideShares()                             │
 │─────────────────────────────────────────────────────│
 │  Delegates to: MobilityDataMapper + Firestore models │
 └─────────────────────────────────────────────────────┘
@@ -520,8 +527,9 @@ View displays result to user
 │  Subscribes to: RESERVATION_CREATED, BOOKING_CONFIRMED│
 │                 PAYMENT_PROCESSED, VEHICLE_RETURNED,  │
 │                 PARKING_RESERVED, PARKING_RELEASED,   │
-│                 TRANSIT_QUERY, GATEWAY_CALL,          │
-│                 RIDE_JOINED                           │
+│                 TRANSIT_QUERY, GATEWAY_CALL           │
+│  (RideJoinedEvent is also emitted by MobilityService │
+│   — see Visitor section — but is not yet persisted.) │
 │  Persists to:   AnalyticsReport (Firestore)          │
 │  Fire-and-forget: .catch(() => {}) — never blocks    │
 └─────────────────────────────────────────────────────┘
@@ -628,7 +636,7 @@ Context: MobilityService calls paymentGateway.charge()
 │ + execute(request: MobilityRequest)                  │
 │       : Promise<MobilityResponse>                    │
 └──────────────────────┬──────────────────────────────┘
-                       │ extends (19 concrete commands)
+                       │ extends (23 concrete commands)
           ┌────────────┼──────────────┬────────────────┐
           ▼            ▼              ▼                ▼
 ┌─────────────────┐ ┌─────────────┐ ┌──────────────┐ ...
@@ -651,7 +659,9 @@ Context: MobilityService calls paymentGateway.charge()
 │    'CONFIRM_BOOKING'      → ConfirmBookingCommand    │
 │    'COMPLETE_BOOKING'     → CompleteBookingCommand   │
 │    'GET_MY_BOOKINGS'      → GetMyBookingsCommand     │
-│    ... 14 more entries (19 total)                    │
+│    ... 18 more entries (23 total, including          │
+│    GET_NEARBY_PARKINGS, LIST_RIDE_SHARES,            │
+│    JOIN_RIDE, LEAVE_RIDE)                            │
 │─────────────────────────────────────────────────────│
 │  MobilityService injected into every command at init │
 └─────────────────────────────────────────────────────┘
@@ -680,7 +690,7 @@ Context: MobilityService calls paymentGateway.charge()
 │ + get metadata(): object  (default: {})              │
 │ + accept(visitor)         (abstract)                 │
 └──────────────────────┬──────────────────────────────┘
-                       │ extends (8 concrete events)
+                       │ extends (9 concrete events)
     ┌──────────────────┼──────────────────────────┐
     ▼                  ▼                          ▼
 ┌──────────────────┐ ┌────────────────────┐     ...
@@ -695,7 +705,7 @@ Context: MobilityService calls paymentGateway.charge()
 └──────────────────┘
 (Also: PaymentProcessedEvent, VehicleReturnedEvent,
  ParkingReservedEvent, ParkingReleasedEvent,
- TransitQueryEvent, GatewayCallEvent)
+ TransitQueryEvent, GatewayCallEvent, RideJoinedEvent)
 
 ┌─────────────────────────────────────────────────────┐
 │  <<interface>> IAnalyticsVisitor                     │
@@ -736,14 +746,16 @@ Double dispatch: event.accept(v) → v.visit(this)
 │                 maps, weather } → factory functions  │
 │─────────────────────────────────────────────────────│
 │ + createGateway(type)                                │
-│ + createPaymentGateway() → IPaymentGateway           │
-│ + createTransitGateway() → ITransitGateway           │
-│ + createParkingGateway() → IParkingGateway           │
-│ + createMapsGateway()    → IMapsGateway              │
-│ + createWeatherGateway() → IWeatherGateway           │
+│ + createPaymentGateway() → MockPaymentGateway        │
+│ + createTransitGateway() → GtfsTransitGateway        │
+│         (MockTransitGateway when USE_MOCK_TRANSIT)   │
+│ + createParkingGateway() → OverpassParkingGateway    │
+│         (MockParkingGateway when USE_MOCK_PARKING)   │
+│ + createMapsGateway()    → MockMapsGateway           │
+│ + createWeatherGateway() → MockWeatherGateway        │
 │─────────────────────────────────────────────────────│
-│  Swap mock → real: one line in GATEWAY_MAP.          │
-│  MobilityService never calls new ConcreteGateway()   │
+│  Swap mock → real: one line in GATEWAY_MAP or an env │
+│  flag. MobilityService never calls new ConcreteGat.()│
 └─────────────────────────────────────────────────────┘
 ```
 

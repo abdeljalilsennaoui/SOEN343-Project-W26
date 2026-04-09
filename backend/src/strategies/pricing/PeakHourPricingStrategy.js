@@ -16,6 +16,7 @@ class PeakHourPricingStrategy extends IPricingStrategy {
     const durationMinutes = Math.max(1, durationMs / (1000 * 60));
 
     const hour = new Date(startTime).getHours();
+    // Peak-hour detection stays local to the strategy so the pricing context can remain algorithm-agnostic.
     const isPeakHour = (hour >= 7 && hour < 9) || (hour >= 17 && hour < 19);
     const multiplier = isPeakHour ? PEAK_MULTIPLIER : 1.0;
 

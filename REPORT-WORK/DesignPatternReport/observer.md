@@ -1,0 +1,4 @@
+# Observer Pattern
+---
+
+The Observer pattern is used to decouple analytics processing from the core business logic in the system. Instead of implementing analytics directly inside MobilityService—which would create tight coupling and reduce maintainability—the system uses an event driven approach where MobilityService acts as a publisher that emits events (e.g., booking, payment, return). These events are distributed through a shared EventBus to subscribers such as the AnalyticsListener, which handles analytics independently. This design ensures that business logic remains separate from analytics logic, improving maintainability and flexibility. Without the Observer pattern, analytics code would be directly integrated into MobilityService, making the system harder to maintain and extend, as any changes to analytics would require modifying core business logic.

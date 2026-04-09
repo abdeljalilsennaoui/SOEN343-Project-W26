@@ -122,9 +122,11 @@ npm run test:coverage # with coverage report
 
 ## Team — Group 1
 
-- Subaanky Krishnapillai – 40128716
-- Andra Vele – 40175695
-- Mohamed Ahmed – 40229758
-- Quentin Bollore – 40348932
-- Abdeljalil Sennaoui – 40117162
-- Sara Rezene Habte – 40224677
+| Name | Student ID | GitHub |
+|------|------------|--------|
+| Subaanky Krishnapillai | 40128716 | [@Subaanky](https://github.com/Subaanky) |
+| Andra Vele | 40175695 | [@avele24](https://github.com/avele24) |
+| Mohamed Ahmed | 40229758 | [@SSOBHY2](https://github.com/SSOBHY2) |
+| Quentin Bollore | 40348932 | [@quentinbol](https://github.com/quentinbol) |
+| Abdeljalil Sennaoui | 40117162 | [@abdeljalilsennaoui](https://github.com/abdeljalilsennaoui) |
+| Sara Rezene Habte | 40224677 | [@SaraH6734](https://github.com/SaraH6734) |

@@ -746,14 +746,16 @@ Double dispatch: event.accept(v) → v.visit(this)
 │                 maps, weather } → factory functions  │
 │─────────────────────────────────────────────────────│
 │ + createGateway(type)                                │
-│ + createPaymentGateway() → IPaymentGateway           │
-│ + createTransitGateway() → ITransitGateway           │
-│ + createParkingGateway() → IParkingGateway           │
-│ + createMapsGateway()    → IMapsGateway              │
-│ + createWeatherGateway() → IWeatherGateway           │
+│ + createPaymentGateway() → MockPaymentGateway        │
+│ + createTransitGateway() → GtfsTransitGateway        │
+│         (MockTransitGateway when USE_MOCK_TRANSIT)   │
+│ + createParkingGateway() → OverpassParkingGateway    │
+│         (MockParkingGateway when USE_MOCK_PARKING)   │
+│ + createMapsGateway()    → MockMapsGateway           │
+│ + createWeatherGateway() → MockWeatherGateway        │
 │─────────────────────────────────────────────────────│
-│  Swap mock → real: one line in GATEWAY_MAP.          │
-│  MobilityService never calls new ConcreteGateway()   │
+│  Swap mock → real: one line in GATEWAY_MAP or an env │
+│  flag. MobilityService never calls new ConcreteGat.()│
 └─────────────────────────────────────────────────────┘
 ```
 

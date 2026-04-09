@@ -10,6 +10,7 @@ const IAnalyticsVisitor = require('./IAnalyticsVisitor');
 
 class LoggingVisitor extends IAnalyticsVisitor {
   visit(event) {
+    // Flatten metadata into a compact log line so each analytics event stays easy to scan in stdout.
     const meta = Object.entries(event.metadata)
       .map(([k, v]) => `${k}=${v}`)
       .join(' ');

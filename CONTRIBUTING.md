@@ -8,6 +8,8 @@
 
 ## Workflow
 
+<!-- Maintainer note: the steps below are intentionally lightweight so small docs-only updates follow the same PR path as code changes. -->
+
 1. Create a branch from `main`
 2. Make your changes
 3. Run linter and tests locally before pushing

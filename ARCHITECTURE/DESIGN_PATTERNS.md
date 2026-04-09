@@ -99,7 +99,7 @@ module.exports = MobilityRequest;          // callers instantiate per use
 
 `MobilityService` emits typed domain events onto `EventBus` after each significant operation. `AnalyticsListener` subscribes to those events and persists them to Firestore. Neither side imports the other — they share only an event name string.
 
-Events emitted by `MobilityService`: `RESERVATION_CREATED`, `BOOKING_CONFIRMED`, `PAYMENT_PROCESSED`, `VEHICLE_RETURNED`, `PARKING_RESERVED`, `PARKING_RELEASED`, `TRANSIT_QUERY`, `GATEWAY_CALL`, `RIDE_JOINED`.
+Events emitted by `MobilityService`: `RESERVATION_CREATED`, `BOOKING_CONFIRMED`, `PAYMENT_PROCESSED`, `VEHICLE_RETURNED`, `PARKING_RESERVED`, `PARKING_RELEASED`, `TRANSIT_QUERY`, `GATEWAY_CALL`, `RIDE_JOINED`. (`AnalyticsListener` currently subscribes to the first eight; `RIDE_JOINED` is emitted for future wiring — adding the subscription is a one-line change.)
 
 | Event | Emitted when | Key metadata |
 |---|---|---|

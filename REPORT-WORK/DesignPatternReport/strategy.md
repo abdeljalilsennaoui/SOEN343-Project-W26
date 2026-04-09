@@ -1,0 +1,5 @@
+# Strategy Pattern
+
+---
+
+The strategy pattern an appropriate choice to handle the pricing logic in the system without placing every pricing rule directly inside the service layer. As putting all calculations in one class with many conditional statements is not optimal in the long term, each pricing rule is separated into its own strategy class. Thay way, the system can choose how the price should be calculated depending on the situation. In SUMMS, IPricingStrategy acts like the strategy interface, while PerMinutePricingStrategy and PeakHourPricingStrategy are the concrete strategies. PricingContext acts like the context by storing the active pricing strategy and delegating the calculation to it. On the other hand, MobilityService acts like the client that uses the pricing context when needed. Not using the pattern would mean that the pricing logic would be more crowded inside the service layer, which would make the system more tightly coupled and harder to update if new pricing models were added later.

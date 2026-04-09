@@ -213,6 +213,7 @@ View displays result to user
 │ + getAvailableSpots(city)                            │
 │ + reserveParkingSpot(spotId)                         │
 │ + releaseParkingSpot(spotId)                         │
+│ + getNearbyParkings(center, radius, maxResults)      │
 │ + getTransitSchedule(city, line)                     │
 │ + getNearbyStops(lat, lng)                           │
 │─────────────────────────────────────────────────────│

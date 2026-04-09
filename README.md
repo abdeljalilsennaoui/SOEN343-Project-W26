@@ -20,6 +20,9 @@ A unified platform for urban mobility services: bike-sharing, car-sharing, scoot
 ├── frontend/            React application (Vite)
 ├── backend/             Express API server (MVC)
 ├── ARCHITECTURE/        Class diagram + design patterns docs
+├── REPORT-WORK/         Phase II report artifacts (use cases, overview)
+├── docs/                Diagrams and supporting material
+├── CONTRIBUTING.md      Contribution guide
 └── SETUP.md             Full developer setup guide
 ```
 

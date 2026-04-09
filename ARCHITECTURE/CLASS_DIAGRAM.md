@@ -92,6 +92,7 @@ View displays result to user
 │ + getAvailableSpots(req, res, next)                  │
 │ + reserveParkingSpot(req, res, next)                 │
 │ + releaseParkingSpot(req, res, next)                 │
+│ + getNearbyParkings(req, res, next)                  │
 │ + getTransitSchedule(req, res, next)                 │
 │ + getNearbyStops(req, res, next)                     │
 │ + getRentalAnalytics(req, res, next)                 │

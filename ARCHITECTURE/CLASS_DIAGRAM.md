@@ -146,9 +146,10 @@ View displays result to user
 │        GET_PARKING_FACILITIES, GET_FACILITY_SPOTS,   │
 │        GET_AVAILABLE_SPOTS,                          │
 │        RESERVE_PARKING_SPOT, RELEASE_PARKING_SPOT,   │
+│        GET_NEARBY_PARKINGS,                          │
 │        GET_TRANSIT_SCHEDULE, GET_NEARBY_STOPS,       │
 │        GET_RENTAL_ANALYTICS, GET_GATEWAY_ANALYTICS,  │
-│        LIST_RIDE_SHARES, JOIN_RIDE, LEAVE_RIDE        │
+│        LIST_RIDE_SHARES, JOIN_RIDE, LEAVE_RIDE       │
 └─────────────────────────────────────────────────────┘
 ```
 

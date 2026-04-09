@@ -1,0 +1,4 @@
+# Adapter Pattern
+---
+
+MobilityService needs to operate on clean domain level methods such as findBooking(id) and saveBooking(data). The Adapter pattern is used to decouple the MobilityService from database specific implementations such as Firestore models. Instead of interacting directly with raw database structures, the MobilityDataGateway acts as an adapter that translates domain level operations (e.g., findBooking, saveBooking) into database calls, while the MobilityDataMapper converts raw data into domain entities. This allows MobilityService to work with a consistent and clean interface without depending on database details. As a result, the pattern improves maintainability, flexibility, and separation of concerns. Without the Adapter pattern, business logic would be tightly coupled with database code, making the system harder to maintain and modify.

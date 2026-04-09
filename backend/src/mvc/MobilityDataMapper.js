@@ -9,6 +9,7 @@
 class MobilityDataMapper {
   /** Map a raw Firestore vehicle document to a Vehicle domain entity. */
   static toVehicle(doc) {
+    // Keep mapper output predictable so service-layer code does not need to understand Firestore-specific shapes.
     return {
       id: doc.id,
       city: doc.city,

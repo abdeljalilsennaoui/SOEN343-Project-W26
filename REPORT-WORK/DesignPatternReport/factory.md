@@ -1,0 +1,4 @@
+# Factory Pattern
+---
+
+The Factory pattern is used to decouple the MobilityService from the creation of various gateway objects, such as payment, transit, parking, map, and weather services. Instead of directly instantiating concrete classes (e.g., mock or real APIs), a centralized factory method is responsible for creating the appropriate gateway based on a given type. This approach ensures that MobilityService depends on abstractions rather than specific implementations, improving flexibility and maintainability. It also allows easy replacement of mock gateways with real external providers without modifying existing code, supporting the Open/Closed and Single Responsibility principles. Without the Factory pattern, the service would be tightly coupled to concrete classes, making the system harder to extend and maintain.

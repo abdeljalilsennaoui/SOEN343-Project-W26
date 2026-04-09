@@ -527,8 +527,9 @@ View displays result to user
 │  Subscribes to: RESERVATION_CREATED, BOOKING_CONFIRMED│
 │                 PAYMENT_PROCESSED, VEHICLE_RETURNED,  │
 │                 PARKING_RESERVED, PARKING_RELEASED,   │
-│                 TRANSIT_QUERY, GATEWAY_CALL,          │
-│                 RIDE_JOINED                           │
+│                 TRANSIT_QUERY, GATEWAY_CALL           │
+│  (RideJoinedEvent is also emitted by MobilityService │
+│   — see Visitor section — but is not yet persisted.) │
 │  Persists to:   AnalyticsReport (Firestore)          │
 │  Fire-and-forget: .catch(() => {}) — never blocks    │
 └─────────────────────────────────────────────────────┘

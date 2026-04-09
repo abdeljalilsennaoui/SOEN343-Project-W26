@@ -1,4 +1,6 @@
-
+/**
+ * Compute the Haversine distance between two latitude/longitude pairs in meters.
+ */
 export function haversineMeters(lat1, lon1, lat2, lon2) {
   const toRad = (value) => (value * Math.PI) / 180;
   const earthRadius = 6371000;

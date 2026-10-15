@@ -128,11 +128,11 @@ npm run test:coverage # with coverage report
 
 ## Team — Group 1
 
-| Name | Student ID | GitHub |
-|------|------------|--------|
-| Subaanky Krishnapillai | 40128716 | [@Subaanky](https://github.com/Subaanky) |
-| Andra Vele | 40175695 | [@avele24](https://github.com/avele24) |
-| Mohamed Ahmed | 40229758 | [@SSOBHY2](https://github.com/SSOBHY2) |
-| Quentin Bollore | 40348932 | [@quentinbol](https://github.com/quentinbol) |
-| Abdeljalil Sennaoui | 40117162 | [@abdeljalilsennaoui](https://github.com/abdeljalilsennaoui) |
-| Sara Rezene Habte | 40224677 | [@SaraH6734](https://github.com/SaraH6734) |
+| Name | GitHub |
+|------|--------|
+| Subaanky Krishnapillai | [@Subaanky](https://github.com/Subaanky) |
+| Andra Vele | [@avele24](https://github.com/avele24) |
+| Mohamed Ahmed | [@SSOBHY2](https://github.com/SSOBHY2) |
+| Quentin Bollore | [@quentinbol](https://github.com/quentinbol) |
+| Abdeljalil Sennaoui | [@abdeljalilsennaoui](https://github.com/abdeljalilsennaoui) |
+| Sara Rezene Habte | [@SaraH6734](https://github.com/SaraH6734) |
